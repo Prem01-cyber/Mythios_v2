@@ -1,93 +1,4 @@
-fda RBX: 0000000000000001 RCX: 00007fad61bf4724
-[  998.394193] RDX: 0000000000000000 RSI: 00007ffd7e2f7d20 RDI: 0000000000000003
-[  998.394194] RBP: 00007ffd7e2f7d90 R08: 0000000000000010 R09: 000000000000003f
-[  998.394195] R10: 000055df11558010 R11: 0000000000000202 R12: 00007ffd7e2
----truncated---",2026-04-22T14:16:49.727,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,linux/linux_kernel,False,0.18
-CVE-2026-31509,"In the Linux kernel, the following vulnerability has been resolved:
-
-nfc: nci: fix circular locking dependency in nci_close_device
-
-nci_close_device() flushes rx_wq and tx_wq while holding req_lock.
-This causes a circular locking dependency because nci_rx_work()
-running on rx_wq can end up taking req_lock too:
-
-  nci_rx_work -> nci_rx_data_packet -> nci_data_exchange_complete
-    -> __sk_destruct -> rawsock_destruct -> nfc_deactivate_target
-    -> nci_deactivate_target -> nci_request -> mutex_lock(&ndev->req_lock)
-
-Move the flush of rx_wq after req_lock has been released.
-This should safe (I think) because NCI_UP has already been cleared
-and the transport is closed, so the work will see it and return
--ENETDOWN.
-
-NIPA has been hitting this running the nci selftest with a debug
-kernel on roughly 4% of the runs.",2026-04-22T14:16:49.947,5.5,MEDIUM,LOCAL,LOW,CWE-667,CWE-667,linux/linux_kernel,False,0.18
-CVE-2026-31510,"In the Linux kernel, the following vulnerability has been resolved:
-
-Bluetooth: L2CAP: Fix null-ptr-deref on l2cap_sock_ready_cb
-
-Before using sk pointer, check if it is null.
-
-Fix the following:
-
- KASAN: null-ptr-deref in range [0x0000000000000260-0x0000000000000267]
- CPU: 0 UID: 0 PID: 5985 Comm: kworker/0:5 Not tainted 7.0.0-rc4-00029-ga989fde763f4 #1 PREEMPT(full)
- Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.17.0-9.fc43 06/10/2025
- Workqueue: events l2cap_info_timeout
- RIP: 0010:kasan_byte_accessible+0x12/0x30
- Code: 79 ff ff ff 0f 1f 40 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 0f 1f 40 d6 48 c1 ef 03 48 b8 00 00 00 00 00 fc ff df <0f> b6 04 07 3c 08 0f 92 c0 c3 cc cce
- veth0_macvtap: entered promiscuous mode
- RSP: 0018:ffffc90006e0f808 EFLAGS: 00010202
- RAX: dffffc0000000000 RBX: ffffffff89746018 RCX: 0000000080000001
- RDX: 0000000000000000 RSI: ffffffff89746018 RDI: 000000000000004c
- RBP: 0000000000000000 R08: 0000000000000001 R09: 0000000000000000
- R10: dffffc0000000000 R11: ffffffff8aae3e70 R12: 0000000000000000
- R13: 0000000000000260 R14: 0000000000000260 R15: 0000000000000001
- FS:  0000000000000000(0000) GS:ffff8880983c2000(0000) knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 00005582615a5008 CR3: 000000007007e000 CR4: 0000000000752ef0
- PKRU: 55555554
- Call Trace:
-  <TASK>
-  __kasan_check_byte+0x12/0x40
-  lock_acquire+0x79/0x2e0
-  lock_sock_nested+0x48/0x100
-  ? l2cap_sock_ready_cb+0x46/0x160
-  l2cap_sock_ready_cb+0x46/0x160
-  l2cap_conn_start+0x779/0xff0
-  ? __pfx_l2cap_conn_start+0x10/0x10
-  ? l2cap_info_timeout+0x60/0xa0
-  ? __pfx___mutex_lock+0x10/0x10
-  l2cap_info_timeout+0x68/0xa0
-  ? process_scheduled_works+0xa8d/0x18c0
-  process_scheduled_works+0xb6e/0x18c0
-  ? __pfx_process_scheduled_works+0x10/0x10
-  ? assign_work+0x3d5/0x5e0
-  worker_thread+0xa53/0xfc0
-  kthread+0x388/0x470
-  ? __pfx_worker_thread+0x10/0x10
-  ? __pfx_kthread+0x10/0x10
-  ret_from_fork+0x51e/0xb90
-  ? __pfx_ret_from_fork+0x10/0x10
- veth1_macvtap: entered promiscuous mode
-  ? __switch_to+0xc7d/0x1450
-  ? __pfx_kthread+0x10/0x10
-  ret_from_fork_asm+0x1a/0x30
-  </TASK>
- Modules linked in:
- ---[ end trace 0000000000000000 ]---
- batman_adv: batadv0: Interface activated: batadv_slave_0
- batman_adv: batadv0: Interface activated: batadv_slave_1
- netdevsim netdevsim7 netdevsim0: set [1, 0] type 2 family 0 port 6081 - 0
- netdevsim netdevsim7 netdevsim1: set [1, 0] type 2 family 0 port 6081 - 0
- netdevsim netdevsim7 netdevsim2: set [1, 0] type 2 family 0 port 6081 - 0
- netdevsim netdevsim7 netdevsim3: set [1, 0] type 2 family 0 port 6081 - 0
- RIP: 0010:kasan_byte_accessible+0x12/0x30
- Code: 79 ff ff ff 0f 1f 40 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 0f 1f 40 d6 48 c1 ef 03 48 b8 00 00 00 00 00 fc ff df <0f> b6 04 07 3c 08 0f 92 c0 c3 cc cce
- ieee80211 phy39: Selected rate control algorithm 'minstrel_ht'
- RSP: 0018:ffffc90006e0f808 EFLAGS: 00010202
- RAX: dffffc0000000000 RBX: ffffffff89746018 RCX: 0000000080000001
- RDX: 0000000000000000 RSI: ffffffff89746018 RDI: 000000000000004c
+000 RSI: ffffffff89746018 RDI: 000000000000004c
  RBP: 0000000000000000 R08: 0000000000000001 R09: 0000000000000000
  R10: dffffc0000000000 R11: ffffffff8aae3e70 R12: 0000000000000000
  R13: 0000000000000260 R14: 0000000000000260 R15: 0000000000000001
@@ -682,7 +593,7 @@ CVE-2026-5377,GitLab has remediated an issue in GitLab CE/EE affecting all versi
 CVE-2026-5816,GitLab has remediated an issue in GitLab CE/EE affecting all versions from 18.10 before 18.10.4 and 18.11 before 18.11.1 that could have allowed an unauthenticated user to execute arbitrary JavaScript in a user's browser session due to improper path validation under certain conditions.,2026-04-22T17:16:44.763,8.0,HIGH,NETWORK,HIGH,CWE-41,CWE-41,gitlab/gitlab,False,0.16
 CVE-2026-6515,"GitLab has remediated an issue in GitLab CE/EE affecting all versions from 18.2 before 18.9.6, 18.10 before 18.10.4, and 18.11 before 18.11.1 that could have allowed a user to use invalidated or incorrectly scoped credentials to access Virtual Registries under certain conditions.",2026-04-22T17:16:44.923,5.4,MEDIUM,NETWORK,LOW,CWE-613,CWE-613,gitlab/gitlab,False,0.27999999999999997
 CVE-2026-26354,"Dell PowerProtect Data Domain with Domain Operating System (DD OS) of Feature Release versions 7.7.1.0 through 8.6, LTS2025 release version 8.3.1.0 through 8.3.1.10, LTS2024 release versions 7.13.1.0 through 7.13.1.60, contain a stack-based Buffer Overflow vulnerability. An unauthenticated attacker with remote access could potentially exploit this vulnerability, leading to arbitrary command execution.",2026-04-22T19:17:00.677,8.1,HIGH,NETWORK,HIGH,CWE-121,"CWE-121,CWE-787",dell/powerprotect_dp_series_appliance;dell/data_domain_operating_system,False,0.22000000000000003
-CVE-2026-28950,"A logging issue was addressed with improved data redaction. This issue is fixed in iOS 18.7.8 and iPadOS 18.7.8, iOS 26.4.2 and iPadOS 26.4.2. Notifications marked for deletion could be unexpectedly retained on the device.",2026-04-22T19:17:00.847,6.2,MEDIUM,LOCAL,LOW,CWE-359,CWE-359,apple/ipados;apple/iphone_os,False,0.25
+CVE-2026-28950,"A logging issue was addressed with improved data redaction. This issue is fixed in iOS 18.7.8 and iPadOS 18.7.8, iOS 26.4.2 and iPadOS 26.4.2. Notifications marked for deletion could be unexpectedly retained on the device.",2026-04-22T19:17:00.847,6.2,MEDIUM,LOCAL,LOW,CWE-359,CWE-359,apple/iphone_os;apple/ipados,False,0.25
 CVE-2026-34413,"Xerte Online Toolkits versions 3.15 and earlier contain a missing authentication vulnerability in the elFinder connector endpoint at /editor/elfinder/php/connector.php where an HTTP redirect to unauthenticated callers does not call exit() or die(), allowing PHP execution to continue and process the full request server-side. Unauthenticated attackers can perform file operations on project media directories including creating directories, uploading files, renaming files, duplicating files, overwriting files, and deleting files, which can be chained with path traversal and extension blocklist vulnerabilities to achieve remote code execution and arbitrary file read.",2026-04-22T19:17:02.710,8.6,HIGH,NETWORK,LOW,CWE-497,CWE-497,,False,0.39
 CVE-2026-34414,"Xerte Online Toolkits versions 3.15 and earlier contain a relative path traversal vulnerability in the elFinder connector endpoint at /editor/elfinder/php/connector.php where the name parameter in rename commands is not sanitized for path traversal sequences. Attackers can supply a name value containing directory traversal sequences to move files from project media directories to arbitrary locations on the filesystem, potentially overwriting application files, achieving stored cross-site scripting, or combining with other vulnerabilities to achieve unauthenticated remote code execution by moving PHP code files to the application root.",2026-04-22T19:17:04.033,7.1,HIGH,NETWORK,LOW,CWE-22,CWE-22,,False,0.27999999999999997
 CVE-2026-34415,"Xerte Online Toolkits versions 3.15 and earlier contain an incomplete input validation vulnerability in the elFinder connector endpoint that fails to block PHP-executable extensions .php4 due to an incorrect regex pattern. Unauthenticated attackers can exploit this flaw combined with authentication bypass and path traversal vulnerabilities to upload malicious PHP code, rename it with a .php4 extension, and execute arbitrary operating system commands on the server.",2026-04-22T19:17:04.253,9.8,CRITICAL,NETWORK,LOW,CWE-184,CWE-184,,False,0.39
@@ -751,7 +662,7 @@ CVE-2026-41206,"PySpector is a static analysis security testing (SAST) Framework
 CVE-2026-41208,"Paperclip is a Node.js server and React UI that orchestrates a team of AI agents to run a business. Versions of @paperclipai/server prior to 2026.416.0 contain a privilege escalation vulnerability that allows an attacker with an Agent API key to execute arbitrary OS commands on the Paperclip server host. An attacker with an agent credential can escalate privileges from the agent runtime to the Paperclip server host. The vulnerability occurs because agents are allowed to update their own adapterConfig via the /agents/:id API endpoint. The configuration field adapterConfig.workspaceStrategy.provisionCommand is later executed by the server runtime. As a result, an attacker controlling an agent credential can inject arbitrary shell commands which are executed by the Paperclip server during workspace provisioning. This breaks the intended trust boundary between agent runtime configuration and server host execution, allowing a compromised or malicious agent to escalate privileges and run commands on the host system. This vulnerability allows remote code execution on the server host. @paperclipai/server version 2026.416.0 fixes the issue.",2026-04-23T02:16:18.670,8.8,HIGH,NETWORK,LOW,CWE-78,CWE-78,paperclip/paperclipai,False,0.27999999999999997
 CVE-2026-41211,"Vite+ is a unified toolchain and entry point for web development. Prior to version 0.1.17, `downloadPackageManager()` accepts an untrusted `version` string and uses it directly in filesystem paths. A caller can supply `../` segments or an absolute path to escape the `VP_HOME/package_manager/<pm>/` cache root and make Vite+ delete, replace, and populate directories outside the intended cache location. Version 0.1.17 contains a patch.",2026-04-23T02:16:18.860,10.0,CRITICAL,NETWORK,LOW,CWE-22,CWE-22,voidzero/vite\+,False,0.39
 CVE-2026-41243,"OpenLearn is open-source educational forum software. Prior to commit 844b2a40a69d0c4911580fe501923f0b391313ab, when `safeMode` is enabled, unapproved forum posts are hidden from the public list, but the direct post-read procedure still returns the full post to anyone with the post UUID. Commit 844b2a40a69d0c4911580fe501923f0b391313ab fixes the issue.",2026-04-23T02:16:19.040,5.4,MEDIUM,NETWORK,LOW,CWE-284,CWE-284,siemvk/openlearn,False,0.27999999999999997
-CVE-2026-41679,"Paperclip is a Node.js server and React UI that orchestrates a team of AI agents to run a business. Prior to version 2026.416.0, an unauthenticated attacker can achieve full remote code execution on any network-accessible Paperclip instance running in `authenticated` mode with default configuration. No user interaction, no credentials, just the target's address. The chain consists of six API calls. The attack is fully automated, requires no user interaction, and works against the default deployment configuration. Version 2026.416.0 patches the issue.",2026-04-23T02:16:19.180,10.0,CRITICAL,NETWORK,LOW,CWE-287,"CWE-287,CWE-862,CWE-1188",paperclip/paperclipai\/server;paperclip/paperclipai,False,0.39
+CVE-2026-41679,"Paperclip is a Node.js server and React UI that orchestrates a team of AI agents to run a business. Prior to version 2026.416.0, an unauthenticated attacker can achieve full remote code execution on any network-accessible Paperclip instance running in `authenticated` mode with default configuration. No user interaction, no credentials, just the target's address. The chain consists of six API calls. The attack is fully automated, requires no user interaction, and works against the default deployment configuration. Version 2026.416.0 patches the issue.",2026-04-23T02:16:19.180,10.0,CRITICAL,NETWORK,LOW,CWE-287,"CWE-287,CWE-862,CWE-1188",paperclip/paperclipai;paperclip/paperclipai\/server,False,0.39
 CVE-2026-2951,"The Gutentor – Gutenberg Blocks – Page Builder for Gutenberg Editor plugin for WordPress is vulnerable to Stored Cross-Site Scripting in versions up to, and including, 3.5.5 due to insufficient input sanitization and output escaping. This makes it possible for authenticated attackers, with contributor-level access and above, to inject arbitrary web scripts in pages that will execute whenever a user accesses an injected page.",2026-04-23T03:16:16.360,5.4,MEDIUM,NETWORK,LOW,CWE-79,CWE-79,,False,0.22999999999999998
 CVE-2026-3844,"The Breeze Cache plugin for WordPress is vulnerable to arbitrary file uploads due to missing file type validation in the 'fetch_gravatar_from_remote' function in all versions up to, and including, 2.4.4. This makes it possible for unauthenticated attackers to upload arbitrary files on the affected site's server which may make remote code execution possible. The vulnerability can only be exploited if ""Host Files Locally - Gravatars"" is enabled, which is disabled by default.",2026-04-23T03:16:17.527,9.8,CRITICAL,NETWORK,LOW,CWE-434,CWE-434,,False,0.39
 CVE-2026-3007,Successful exploitation of the stored cross-site scripting (XSS) vulnerability could allow an attacker to execute arbitrary JavaScript on any user account that has access to Koollab LMS’ courselet feature.,2026-04-23T04:16:07.980,5.4,MEDIUM,NETWORK,LOW,CWE-Unknown,,,False,0.22999999999999998
@@ -936,7 +847,7 @@ CVE-2026-31169,An issue was discovered in ToToLink A3300R firmware v17.0.0cu.557
 CVE-2026-31173,An issue was discovered in ToToLink A3300R firmware v17.0.0cu.557_B20221024 allowing attackers to execute arbitrary commands via the interval parameter to /cgi-bin/cstecgi.cgi.,2026-04-23T19:17:25.603,6.5,MEDIUM,NETWORK,LOW,CWE-77,CWE-77,totolink/a3300r_firmware,False,0.39
 CVE-2026-33694,"This vulnerability allows an attacker to create a junction, enabling the deletion of arbitrary files with SYSTEM privileges. As a result, this condition potentially facilitates arbitrary code execution, whereby an attacker may exploit the vulnerability to execute malicious code with elevated SYSTEM privileges.",2026-04-23T19:17:28.073,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-59,CWE-59,,False,0.0
 CVE-2026-40886,"Argo Workflows is an open source container-native workflow engine for orchestrating parallel jobs on Kubernetes. From 3.6.5 to 4.0.4, an unchecked array index in the pod informer's podGCFromPod() function causes a controller-wide panic when a workflow pod carries a malformed workflows.argoproj.io/pod-gc-strategy annotation. Because the panic occurs inside an informer goroutine (outside the controller's recover() scope), it crashes the entire controller process. The poisoned pod persists across restarts, causing a crash loop that halts all workflow processing until the pod is manually deleted. This vulnerability is fixed in 4.0.5 and 3.7.14.",2026-04-23T19:17:28.617,7.7,HIGH,NETWORK,LOW,CWE-129,CWE-129,argoproj/argo_workflows,False,0.31
-CVE-2026-40894,"OpenTelemetry dotnet is a dotnet telemetry framework. In OpenTelemetry.Api 0.5.0-beta.2 to 1.15.2 and OpenTelemetry.Extensions.Propagators 1.3.1 to 1.15.2, The implementation details of the baggage, B3 and Jaeger processing code in the OpenTelemetry.Api and OpenTelemetry.Extensions.Propagators NuGet packages can allocate excessive memory when parsing which could create a potential denial of service (DoS) in the consuming application. This vulnerability is fixed in 1.15.3.",2026-04-23T19:17:28.810,5.3,MEDIUM,NETWORK,LOW,CWE-789,CWE-789,opentelemetry/opentelemetry;opentelemetry/opentelemetry.extensions.propagators;opentelemetry/opentelemetry.api,False,0.39
+CVE-2026-40894,"OpenTelemetry dotnet is a dotnet telemetry framework. In OpenTelemetry.Api 0.5.0-beta.2 to 1.15.2 and OpenTelemetry.Extensions.Propagators 1.3.1 to 1.15.2, The implementation details of the baggage, B3 and Jaeger processing code in the OpenTelemetry.Api and OpenTelemetry.Extensions.Propagators NuGet packages can allocate excessive memory when parsing which could create a potential denial of service (DoS) in the consuming application. This vulnerability is fixed in 1.15.3.",2026-04-23T19:17:28.810,5.3,MEDIUM,NETWORK,LOW,CWE-789,CWE-789,opentelemetry/opentelemetry;opentelemetry/opentelemetry.api;opentelemetry/opentelemetry.extensions.propagators,False,0.39
 CVE-2026-41078,"OpenTelemetry dotnet is a dotnet telemetry framework. In 1.6.0-rc.1 and earlier, OpenTelemetry.Exporter.Jaeger may allow sustained memory pressure when the internal pooled-list sizing grows based on a large observed span/tag set and that enlarged size is reused for subsequent allocations. Under high-cardinality or attacker-influenced telemetry input, this can increase memory consumption and potentially cause denial of service. There is no plan to fix this issue as OpenTelemetry.Exporter.Jaeger was deprecated in 2023.",2026-04-23T19:17:28.950,5.9,MEDIUM,NETWORK,HIGH,CWE-770,CWE-770,opentelemetry/opentelemetry,False,0.22000000000000003
 CVE-2026-41173,"The AWS X-Ray Remote Sampler package provides a sampler which can get sampling configurations from AWS X-Ray. Prior to 0.1.0-alpha.8, OpenTelemetry.Sampler.AWS reads unbounded HTTP response bodies from a configured AWS X-Ray remote sampling endpoint into memory.  AWSXRaySamplerClient.DoRequestAsync called HttpClient.SendAsync followed by ReadAsStringAsync(), which materializes the entire HTTP response body into a single in-memory string with no size limit. The sampling endpoint is configurable via AWSXRayRemoteSamplerBuilder.SetEndpoint (default: http://localhost:2000). An attacker who controls the configured endpoint, or who can intercept traffic to it (MitM), can return an arbitrarily large response body. This causes unbounded heap allocation in the consuming process, leading to high transient memory pressure, garbage-collection stalls, or an OutOfMemoryException that terminates the process. This vulnerability is fixed in 0.1.0-alpha.8.",2026-04-23T19:17:29.083,5.9,MEDIUM,NETWORK,HIGH,CWE-770,CWE-770,,False,0.22000000000000003
 CVE-2026-41205,"Mako is a template library written in Python. Prior to 1.3.11, TemplateLookup.get_template() is vulnerable to path traversal when a URI starts with // (e.g., //../../../secret.txt). The root cause is an inconsistency between two slash-stripping implementations. Any file readable by the process can be returned as rendered template content when an application passes untrusted input directly to TemplateLookup.get_template(). This vulnerability is fixed in 1.3.11.",2026-04-23T19:17:29.270,7.5,HIGH,NETWORK,LOW,CWE-22,CWE-22,sqlalchemy/mako,False,0.39
@@ -1115,7 +1026,7 @@ An authenticated attacker can show malicious content when browsing queues in the
 
 This issue affects Apache ActiveMQ: before 5.19.6, from 6.0.0 before 6.2.5; Apache ActiveMQ Web: before 5.19.6, from 6.0.0 before 6.2.5.
 
-Users are recommended to upgrade to version 6.2.5 or 5.19.6, which fixes the issue.",2026-04-24T11:16:22.670,6.5,MEDIUM,NETWORK,LOW,CWE-79,"CWE-79,CWE-915,CWE-79",apache/activemq;apache/activemq_web,False,0.39
+Users are recommended to upgrade to version 6.2.5 or 5.19.6, which fixes the issue.",2026-04-24T11:16:22.670,6.5,MEDIUM,NETWORK,LOW,CWE-79,"CWE-79,CWE-915,CWE-79",apache/activemq_web;apache/activemq,False,0.39
 CVE-2026-41044,"Improper Input Validation, Improper Control of Generation of Code ('Code Injection') vulnerability in Apache ActiveMQ, Apache ActiveMQ Broker, Apache ActiveMQ All.
 
 An authenticated attacker can use the admin web console page to construct a malicious broker name that bypasses name validation to include an xbean binding that can be later used by a VM transport to load a remote Spring XML application.
@@ -4796,8 +4707,8 @@ CVE-2026-7037,A security flaw has been discovered in Totolink A8000RU 7.1cu.643_
 CVE-2026-7038,A weakness has been identified in tufantunc ssh-mcp up to 1.5.0. Impacted is an unknown function of the file src/index.ts of the component Command Line Handler. This manipulation causes insufficiently protected credentials. The attack is restricted to local execution. The exploit has been made available to the public and could be used for attacks. The project was informed of the problem early through an issue report but has not responded yet.,2026-04-26T12:16:23.373,3.3,LOW,LOCAL,LOW,CWE-522,CWE-522,,False,0.18
 CVE-2026-7039,A security vulnerability has been detected in tufantunc ssh-mcp up to 1.5.0. The affected element is the function shell.write of the file src/index.ts. Such manipulation of the argument Description leads to command injection. The attack must be carried out locally. The exploit has been disclosed publicly and may be used. The project was informed of the problem early through an issue report but has not responded yet.,2026-04-26T13:16:00.727,7.8,HIGH,LOCAL,LOW,CWE-74,"CWE-74,CWE-77",,False,0.18
 CVE-2026-7041,A vulnerability was detected in 666ghj MiroFish up to 0.1.2. The impacted element is an unknown function of the file /console of the component Werkzeug Debugger PIN Handler. Performing a manipulation of the argument SECRET results in information disclosure. It is possible to initiate the attack remotely. The attack is considered to have high complexity. The exploitability is regarded as difficult. The exploit is now public and may be used. The project was informed of the problem early through an issue report but has not responded yet.,2026-04-26T13:16:01.813,3.7,LOW,NETWORK,HIGH,CWE-200,"CWE-200,CWE-284",,False,0.22000000000000003
-CVE-2026-6785,"Memory safety bugs present in Firefox ESR 115.34, Firefox ESR 140.9, Thunderbird ESR 140.9, Firefox 149 and Thunderbird 149. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150, Firefox ESR 115.35, Firefox ESR 140.10, Thunderbird 150, and Thunderbird 140.10.",2026-04-26T19:53:39.010,8.1,HIGH,NETWORK,HIGH,CWE-125,"CWE-125,CWE-416,CWE-787",mozilla/thunderbird;mozilla/firefox,False,0.22000000000000003
-CVE-2026-6786,"Memory safety bugs present in Firefox ESR 140.9, Thunderbird ESR 140.9, Firefox 149 and Thunderbird 149. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150, Firefox ESR 140.10, Thunderbird 150, and Thunderbird 140.10.",2026-04-26T19:53:39.640,8.1,HIGH,NETWORK,HIGH,CWE-125,"CWE-125,CWE-416,CWE-787",mozilla/thunderbird;mozilla/firefox,False,0.22000000000000003
+CVE-2026-6785,"Memory safety bugs present in Firefox ESR 115.34, Firefox ESR 140.9, Thunderbird ESR 140.9, Firefox 149 and Thunderbird 149. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150, Firefox ESR 115.35, Firefox ESR 140.10, Thunderbird 150, and Thunderbird 140.10.",2026-04-26T19:53:39.010,8.1,HIGH,NETWORK,HIGH,CWE-125,"CWE-125,CWE-416,CWE-787",mozilla/firefox;mozilla/thunderbird,False,0.22000000000000003
+CVE-2026-6786,"Memory safety bugs present in Firefox ESR 140.9, Thunderbird ESR 140.9, Firefox 149 and Thunderbird 149. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150, Firefox ESR 140.10, Thunderbird 150, and Thunderbird 140.10.",2026-04-26T19:53:39.640,8.1,HIGH,NETWORK,HIGH,CWE-125,"CWE-125,CWE-416,CWE-787",mozilla/firefox;mozilla/thunderbird,False,0.22000000000000003
 CVE-2018-25263,Faleemi Desktop Software 1.8.2 contains a local buffer overflow vulnerability in the Device alias field that allows local attackers to trigger a structured exception handler (SEH) overwrite. Attackers can craft a malicious payload and paste it into the Device alias field within the Managing Log interface to execute arbitrary code with calculator proof-of-concept execution.,2026-04-26T22:17:26.863,8.4,HIGH,LOCAL,LOW,CWE-120,CWE-120,,False,0.25
 CVE-2018-25264,"TransMac 12.2 contains a buffer overflow vulnerability in the license key input field that allows local attackers to crash the application by submitting an oversized string. Attackers can generate a payload file containing 4000 bytes of data, paste it into the License Key field, and trigger a denial of service condition.",2026-04-26T22:17:27.460,6.2,MEDIUM,LOCAL,LOW,CWE-120,CWE-120,,False,0.25
 CVE-2018-25273,"CrossFont 7.5 contains a buffer overflow vulnerability that allows local attackers to crash the application by submitting an oversized payload in the License Key field. Attackers can generate a malicious file containing 4000 bytes of data, paste it into the License Key input field, and trigger an application crash when processing the input.",2026-04-26T22:17:27.620,6.2,MEDIUM,LOCAL,LOW,CWE-120,CWE-120,,False,0.25
@@ -5589,11 +5500,11 @@ CVE-2026-7282,A vulnerability was identified in SourceCodester Pharmacy Sales an
 CVE-2026-7283,A security flaw has been discovered in SourceCodester Pharmacy Sales and Inventory System 1.0. This impacts the function save_expired of the file /ajax.php?action=save_expired. The manipulation of the argument ID results in sql injection. It is possible to launch the attack remotely. The exploit has been released to the public and may be used for attacks.,2026-04-28T15:16:36.870,4.7,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-89",,False,0.12
 CVE-2026-7288,A vulnerability has been found in D-Link DIR-825M 1.1.12. This vulnerability affects the function sub_4151FC of the file /boafrm/formVpnConfigSetup. The manipulation of the argument submit-url leads to buffer overflow. Remote exploitation of the attack is possible. The exploit has been disclosed to the public and may be used.,2026-04-28T15:16:37.037,8.8,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-120",dlink/dir-825m_firmware,False,0.27999999999999997
 CVE-2026-7289,A vulnerability was found in D-Link DIR-825M 1.1.12. This issue affects the function sub_414BA8 of the file /boafrm/formWanConfigSetup. The manipulation of the argument submit-url results in buffer overflow. The attack can be executed remotely. The exploit has been made public and could be used.,2026-04-28T15:16:37.210,8.8,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-120",dlink/dir-825m_firmware,False,0.27999999999999997
-CVE-2026-7320,"Information disclosure due to incorrect boundary conditions in the Audio/Video component. This vulnerability was fixed in Firefox 150.0.1, Firefox ESR 140.10.1, Firefox ESR 115.35.1, Thunderbird 150.0.1, and Thunderbird 140.10.1.",2026-04-28T15:16:37.447,7.5,HIGH,NETWORK,LOW,CWE-119,CWE-119,mozilla/thunderbird;mozilla/firefox,False,0.39
-CVE-2026-7321,"Sandbox escape due to incorrect boundary conditions in the WebRTC: Networking component. This vulnerability was fixed in Firefox 150, Thunderbird 150, Firefox ESR 140.10.1, and Thunderbird 140.10.1.",2026-04-28T15:16:37.550,9.6,CRITICAL,NETWORK,LOW,CWE-120,CWE-120,mozilla/thunderbird;mozilla/firefox,False,0.27999999999999997
-CVE-2026-7322,"Memory safety bugs present in Thunderbird ESR 140.10.0 and Thunderbird 150.0.0. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150.0.1, Firefox ESR 140.10.1, Firefox ESR 115.35.1, Thunderbird 150.0.1, and Thunderbird 140.10.1.",2026-04-28T15:16:37.727,7.3,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-416",mozilla/thunderbird;mozilla/firefox,False,0.39
-CVE-2026-7323,"Memory safety bugs present in Thunderbird ESR 140.10.0 and Thunderbird 150.0.0. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150.0.1, Firefox ESR 140.10.1, Thunderbird 150.0.1, and Thunderbird 140.10.1.",2026-04-28T15:16:37.837,7.3,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-787",mozilla/thunderbird;mozilla/firefox,False,0.39
-CVE-2026-7324,Memory safety bugs present in Thunderbird 150.0.0. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150.0.1 and Thunderbird 150.0.1.,2026-04-28T15:16:37.950,7.3,HIGH,NETWORK,LOW,CWE-119,CWE-119,mozilla/thunderbird;mozilla/firefox,False,0.39
+CVE-2026-7320,"Information disclosure due to incorrect boundary conditions in the Audio/Video component. This vulnerability was fixed in Firefox 150.0.1, Firefox ESR 140.10.1, Firefox ESR 115.35.1, Thunderbird 150.0.1, and Thunderbird 140.10.1.",2026-04-28T15:16:37.447,7.5,HIGH,NETWORK,LOW,CWE-119,CWE-119,mozilla/firefox;mozilla/thunderbird,False,0.39
+CVE-2026-7321,"Sandbox escape due to incorrect boundary conditions in the WebRTC: Networking component. This vulnerability was fixed in Firefox 150, Thunderbird 150, Firefox ESR 140.10.1, and Thunderbird 140.10.1.",2026-04-28T15:16:37.550,9.6,CRITICAL,NETWORK,LOW,CWE-120,CWE-120,mozilla/firefox;mozilla/thunderbird,False,0.27999999999999997
+CVE-2026-7322,"Memory safety bugs present in Thunderbird ESR 140.10.0 and Thunderbird 150.0.0. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150.0.1, Firefox ESR 140.10.1, Firefox ESR 115.35.1, Thunderbird 150.0.1, and Thunderbird 140.10.1.",2026-04-28T15:16:37.727,7.3,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-416",mozilla/firefox;mozilla/thunderbird,False,0.39
+CVE-2026-7323,"Memory safety bugs present in Thunderbird ESR 140.10.0 and Thunderbird 150.0.0. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150.0.1, Firefox ESR 140.10.1, Thunderbird 150.0.1, and Thunderbird 140.10.1.",2026-04-28T15:16:37.837,7.3,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-787",mozilla/firefox;mozilla/thunderbird,False,0.39
+CVE-2026-7324,Memory safety bugs present in Thunderbird 150.0.0. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability was fixed in Firefox 150.0.1 and Thunderbird 150.0.1.,2026-04-28T15:16:37.950,7.3,HIGH,NETWORK,LOW,CWE-119,CWE-119,mozilla/firefox;mozilla/thunderbird,False,0.39
 CVE-2025-60887,"An issue was discovered in Cista v0.15 and below. Insecure deserialization of untrusted input under certain conditions may lead to leaking of stack/heap addresses which may be used to bypass ASLR. Classes with pointer-like mechanics under the cista::raw namespace are prone to reference tampering, where Cista does not perform sufficient checks to safeguard against self-referencing pointers and referencing other data within the payload. The leak occurs if the deserialized values are observable by the attacker.",2026-04-28T16:16:05.597,5.3,MEDIUM,NETWORK,LOW,CWE-502,CWE-502,,False,0.39
 CVE-2025-60889,Insecure deserialization of untrusted input in StellarGroup HPX 1.11.0 under certain conditions may allow attackers to execute arbitrary code or other unspecified impacts.,2026-04-28T16:16:05.763,9.8,CRITICAL,NETWORK,LOW,CWE-502,CWE-502,,False,0.39
 CVE-2026-38651,"Authentication Bypass vulnerability exists in Netmaker versions prior to 1.5.0. The VerifyHostToken function in logic/jwts.go fails to validate the JWT signature when verifying host tokens. An attacker can forge a JWT signed with any arbitrary key and use it to impersonate any host in the network, gaining access to sensitive information",2026-04-28T16:16:13.443,8.2,HIGH,NETWORK,LOW,CWE-347,CWE-347,,False,0.39
@@ -5845,7 +5756,7 @@ CVE-2026-38991,Cockpit 2.13.5 and earlier is affected by a misconfiguration with
 CVE-2026-38993,Cockpit 2.13.5 and earlier is vulnerable to directory traversal via the Buckets component. This vulnerability allows authenticated attackers to write files to arbitrary locations within the uploads directory or overwrite assets with malicious versions.,2026-04-29T16:16:23.907,6.5,MEDIUM,NETWORK,LOW,CWE-22,CWE-22,,False,0.27999999999999997
 CVE-2026-40229,"Helpy contains a stored cross-site scripting vulnerability in the post author display logic. Any registered user can persist arbitrary HTML in their account name field and cause it to be rendered unescaped in public forum threads where they participate, in the admin ticket view, and in HTML notification emails sent to other users.This issue affects helpy: 2.8.0.",2026-04-29T16:16:24.213,5.4,MEDIUM,NETWORK,LOW,CWE-79,CWE-79,helpy.io/helpy,False,0.22999999999999998
 CVE-2026-40230,Helpy contains a stored cross-site scripting vulnerability in the knowledge base Doc rendering logic. An authenticated attacker with admin or agent editor privileges can persist arbitrary HTML or JavaScript in the body field of a knowledge base Doc.This issue affects helpy: 2.8.0.,2026-04-29T16:16:24.350,5.4,MEDIUM,NETWORK,LOW,CWE-79,CWE-79,helpy.io/helpy,False,0.22999999999999998
-CVE-2026-41940,cPanel and WHM versions after 11.40 contain an authentication bypass vulnerability in the login flow that allows unauthenticated remote attackers to gain unauthorized access to the control panel.,2026-04-29T16:16:25.037,9.8,CRITICAL,NETWORK,LOW,CWE-306,CWE-306,cpanel/cpanel;cpanel/wp_squared;cpanel/whm,False,0.39
+CVE-2026-41940,cPanel and WHM versions after 11.40 contain an authentication bypass vulnerability in the login flow that allows unauthenticated remote attackers to gain unauthorized access to the control panel.,2026-04-29T16:16:25.037,9.8,CRITICAL,NETWORK,LOW,CWE-306,CWE-306,cpanel/wp_squared;cpanel/cpanel;cpanel/whm,False,0.39
 CVE-2026-42198,"pgjdbc is an open source postgresql JDBC Driver. From version 42.2.0 to before version 42.7.11, pgjdbc is vulnerable to a client-side denial of service during SCRAM-SHA-256 authentication. A malicious server can instruct the driver to perform SCRAM authentication with a very large iteration count. With a large enough value, the client spends an unbounded amount of CPU time inside PBKDF2 before authentication can fail. A single attempt ties up a CPU core. Repeated or concurrent attempts exhaust client CPU and can wedge connection pools. In affected versions, loginTimeout did not fully mitigate this problem. When loginTimeout expired, the caller could stop waiting, but the worker thread performing the connection attempt could continue running and burning CPU inside the SCRAM PBKDF2 computation. This issue has been patched in version 42.7.11.",2026-04-29T16:16:25.427,7.5,HIGH,NETWORK,LOW,CWE-770,CWE-770,postgresql/postgresql_jdbc_driver,False,0.39
 CVE-2026-5166,"Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal') vulnerability in TUBITAK BILGEM Software Technologies Research Institute Pardus Software Center allows Path Traversal.
 
@@ -6081,7 +5992,7 @@ So use a memcpy instead of sprintf to have the correct value:
 (the above have a hack to embed a zero inside and check it's
 returned correctly).
 
-This is XSA-485 / CVE-2026-31786",2026-04-30T11:16:20.967,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+This is XSA-485 / CVE-2026-31786",2026-04-30T11:16:20.967,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31787,"In the Linux kernel, the following vulnerability has been resolved:
 
 xen/privcmd: fix double free via VMA splitting
@@ -6122,7 +6033,7 @@ necessary reinitializations of certain local variables
 before replay.
 
 This change makes sure that these variables get initialized
-after the label.",2026-04-30T12:16:24.103,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+after the label.",2026-04-30T12:16:24.103,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-41882,"In JetBrains IntelliJ IDEA before 2024.3.7.1, 
 2025.1.7.1,
 2025.2.6.2,  
@@ -6463,7 +6374,7 @@ page systems this causes memcpy() to overflow the cache page by 24 bytes
 into the following kernel page.
 
 Reject dirents that cannot fit in a single page before copying them into
-the readdir cache.",2026-05-01T14:16:19.133,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+the readdir cache.",2026-05-01T14:16:19.133,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31695,"In the Linux kernel, the following vulnerability has been resolved:
 
 wifi: virt_wifi: remove SET_NETDEV_DEV to avoid use-after-free
@@ -6536,7 +6447,7 @@ Let's remove SET_NETDEV_DEV for virt_wifi to avoid bugs like this:
   </TASK>
 
 This fix may be combined with another one in the ethtool subsystem:
-https://lore.kernel.org/all/20260322075917.254874-1-alex.popov@linux.com/T/#u",2026-05-01T14:16:19.250,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+https://lore.kernel.org/all/20260322075917.254874-1-alex.popov@linux.com/T/#u",2026-05-01T14:16:19.250,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31696,"In the Linux kernel, the following vulnerability has been resolved:
 
 rxrpc: Fix missing validation of ticket length in non-XDR key preparsing
@@ -6599,7 +6510,7 @@ buffer and leak data to userspace.
 
 WARN if the driver says the command succeeded, but the firmware error code
 says otherwise, as __sev_do_cmd_locked() is expected to return -EIO on any
-firwmware error.",2026-05-01T14:16:19.517,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+firwmware error.",2026-05-01T14:16:19.517,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31698,"In the Linux kernel, the following vulnerability has been resolved:
 
 crypto: ccp: Don't attempt to copy PDH cert to userspace if PSP command failed
@@ -6642,7 +6553,7 @@ leak data to userspace.
 
 WARN if the driver says the command succeeded, but the firmware error code
 says otherwise, as __sev_do_cmd_locked() is expected to return -EIO on any
-firwmware error.",2026-05-01T14:16:19.650,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+firwmware error.",2026-05-01T14:16:19.650,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31699,"In the Linux kernel, the following vulnerability has been resolved:
 
 crypto: ccp: Don't attempt to copy CSR to userspace if PSP command failed
@@ -6685,7 +6596,7 @@ leak data to userspace.
 
 WARN if the driver says the command succeeded, but the firmware error code
 says otherwise, as __sev_do_cmd_locked() is expected to return -EIO on any
-firwmware error.",2026-05-01T14:16:19.777,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+firwmware error.",2026-05-01T14:16:19.777,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31700,"In the Linux kernel, the following vulnerability has been resolved:
 
 net/packet: fix TOCTOU race on mmap'd vnet_hdr in tpacket_snd()
@@ -6705,7 +6616,7 @@ from user-controlled shared memory.
 
 Fix this by copying vnet_hdr from the mmap'd ring buffer to a
 stack-local variable before validation and use, consistent with the
-approach used in packet_snd() and all other callers.",2026-05-01T14:16:19.907,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+approach used in packet_snd() and all other callers.",2026-05-01T14:16:19.907,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31701,"In the Linux kernel, the following vulnerability has been resolved:
 
 ALSA: caiaq: take a reference on the USB device in create_card()
@@ -6790,7 +6701,7 @@ benefit. Just remove the loop from inode_switch_wbs_work_fn() instead.
 That way when wb_queue_isw() queues work, we are guaranteed we have
 added the first item to wb->switch_wbs_ctxs and nobody is going to
 remove it (and drop the wb reference it holds) until the queued work
-runs.",2026-05-01T14:16:20.263,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+runs.",2026-05-01T14:16:20.263,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31704,"In the Linux kernel, the following vulnerability has been resolved:
 
 ksmbd: use check_add_overflow() to prevent u16 DACL size overflow
@@ -6829,7 +6740,7 @@ This is the same bug pattern fixed by commit beef2634f81f (""ksmbd: fix
 potencial OOB in get_file_all_info() for compound requests"") and
 commit fda9522ed6af (""ksmbd: fix OOB write in QUERY_INFO for compound
 requests""), both of which added bounds checks before unconditional
-writes in QUERY_INFO response handlers.",2026-05-01T14:16:20.473,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+writes in QUERY_INFO response handlers.",2026-05-01T14:16:20.473,9.8,CRITICAL,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-31706,"In the Linux kernel, the following vulnerability has been resolved:
 
 ksmbd: validate num_aces and harden ACE walk in smb_inherit_dacl()
@@ -6897,7 +6808,7 @@ v1 -> v2:
     SMB2 CREATE; Namjae flagged the kcifs3_test_inherit_dacl_old name
     in v1 since it does not exist in ksmbd.
   - Drop the commit-hash citation from the code comment per Namjae's
-    review; keep the parse_dacl() pointer.",2026-05-01T14:16:20.597,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+    review; keep the parse_dacl() pointer.",2026-05-01T14:16:20.597,8.8,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31707,"In the Linux kernel, the following vulnerability has been resolved:
 
 ksmbd: validate response sizes in ipc_validate_msg()
@@ -6938,7 +6849,7 @@ pr_err in ksmbd_alloc_user() are removed.
 
 This is the response-side analogue of aab98e2dbd64 (""ksmbd: fix
 integer overflows on 32 bit systems""), which hardened the request
-side.",2026-05-01T14:16:20.720,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+side.",2026-05-01T14:16:20.720,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31708,"In the Linux kernel, the following vulnerability has been resolved:
 
 smb: client: fix OOB read in smb2_ioctl_query_info QUERY_INFO path
@@ -6957,7 +6868,7 @@ buffer and expose adjacent kernel heap to userspace.
 Guard the QUERY_INFO copy with a bounds check on the actual Buffer
 payload.  Use struct_size(qi_rsp, Buffer, qi.input_buffer_length)
 rather than an open-coded addition so the guard cannot overflow on
-32-bit builds.",2026-05-01T14:16:20.837,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+32-bit builds.",2026-05-01T14:16:20.837,8.1,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31709,"In the Linux kernel, the following vulnerability has been resolved:
 
 smb: client: validate the whole DACL before rewriting it in cifsacl
@@ -6980,7 +6891,7 @@ Factor the DACL structural checks into validate_dacl(), extend them to
 validate each ACE against the DACL bounds, and use the shared validator
 before the chmod/chown rebuild paths.  parse_dacl() reuses the same
 validator so the read-side parser and write-side rewrite paths agree on
-what constitutes a well-formed incoming DACL.",2026-05-01T14:16:20.950,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+what constitutes a well-formed incoming DACL.",2026-05-01T14:16:20.950,8.8,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31710,"In the Linux kernel, the following vulnerability has been resolved:
 
 smb: client: fix dir separator in SMB1 UNIX mounts
@@ -7030,7 +6941,7 @@ attempts -- including legitimate connects issued after the
 forced-fail window had closed -- were all rejected with ""Limit the
 maximum number of connections"".  With this patch applied, the same
 connect sequence produces no rejections and the counter cycles
-cleanly between zero and one on every accept.",2026-05-01T14:16:21.150,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+cleanly between zero and one on every accept.",2026-05-01T14:16:21.150,7.5,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-31712,"In the Linux kernel, the following vulnerability has been resolved:
 
 ksmbd: require minimum ACE size in smb_check_perm_dacl()
@@ -7074,7 +6985,7 @@ on a file.  On a subsequent CREATE against that file, the kernel
 walks the stored DACL via smb_check_perm_dacl() and triggers the
 OOB read.  Not pre-auth, and the OOB read is not reflected to the
 attacker, but KASAN reports and kernel state corruption are
-possible.",2026-05-01T14:16:21.270,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+possible.",2026-05-01T14:16:21.270,8.3,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31713,"In the Linux kernel, the following vulnerability has been resolved:
 
 fuse: abort on fatal signal during sync init
@@ -7182,7 +7093,7 @@ Fix this up by bounding rec->used correctly.
 
 This is much like commit b2bc7c44ed17 (""fs/ntfs3: Fix slab-out-of-bounds
 read in DeleteIndexEntryRoot"") which checked different values in this
-same switch statement.",2026-05-01T14:16:21.743,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+same switch statement.",2026-05-01T14:16:21.743,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31717,"In the Linux kernel, the following vulnerability has been resolved:
 
 ksmbd: validate owner of durable handle on reconnect
@@ -7198,7 +7109,7 @@ the existing open.
 Add a durable_owner structure to ksmbd_file to store the original opener's
 UID, GID, and account name. and catpure the owner information when a file
 handle becomes orphaned. and implementing ksmbd_vfs_compare_durable_owner()
-to validate the identity of the requester during SMB2_CREATE (DHnC).",2026-05-01T14:16:21.860,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+to validate the identity of the requester during SMB2_CREATE (DHnC).",2026-05-01T14:16:21.860,8.8,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31718,"In the Linux kernel, the following vulnerability has been resolved:
 
 ksmbd: fix use-after-free in __ksmbd_close_fd() via durable scavenger
@@ -7226,7 +7137,7 @@ smb_lock->clist across three paths:
  - Remove the lock from the old connection's lock_list in
    session_fd_check()
  - Re-add the lock to the new connection's lock_list in
-   ksmbd_reopen_durable_fd().",2026-05-01T14:16:21.963,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+   ksmbd_reopen_durable_fd().",2026-05-01T14:16:21.963,9.8,CRITICAL,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-31719,"In the Linux kernel, the following vulnerability has been resolved:
 
 crypto: krb5enc - fix async decrypt skipping hash verification
@@ -7253,7 +7164,7 @@ for the dispatch_encrypt return value.
 
 
 Unset MAY_BACKLOG on the async completion path so the user won't
-see back-to-back EINPROGRESS notifications.",2026-05-01T14:16:22.077,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+see back-to-back EINPROGRESS notifications.",2026-05-01T14:16:22.077,7.5,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-3143,"The Total Upkeep – WordPress Backup Plugin plus Restore & Migrate by BoldGrid plugin for WordPress is vulnerable to unauthorized modification of data due to a missing capability check on the 'wp_ajax_cli_cancel' function in all versions up to, and including, 1.17.1. This makes it possible for unauthenticated attackers to cancel a pending rollback, potentially preventing a WordPress installation from automatically reverting a failed update.",2026-05-01T14:16:22.190,5.3,MEDIUM,NETWORK,LOW,CWE-862,CWE-862,,False,0.39
 CVE-2026-42482,"A stack-based buffer overflow in mangle_to_hex_lower() and mangle_to_hex_upper() in src/rp_cpu.c in hashcat v7.1.2 allows an attacker to cause a denial of service or possibly execute arbitrary code via a crafted rule file, or via the -j or -k rule options used with password candidates of 128 or more characters. The vulnerability is caused by a bounds check that fails to account for the 2x expansion that occurs when password bytes are converted to hexadecimal.",2026-05-01T14:16:22.577,9.8,CRITICAL,NETWORK,LOW,CWE-787,"CWE-787,CWE-121",hashcat/hashcat,False,0.39
 CVE-2026-42483,A heap-based buffer overflow in the Kerberos hash parser in hashcat v7.1.2 allows an attacker to cause a denial of service or possibly execute arbitrary code via a crafted Kerberos hash file. The issue affects module_hash_decode in multiple Kerberos-related modules because account_info_len is calculated from untrusted delimiter positions without upper-bound validation before memcpy copies the data into a fixed-size account_info buffer.,2026-05-01T14:16:22.687,9.8,CRITICAL,NETWORK,LOW,CWE-787,"CWE-787,CWE-122",hashcat/hashcat,False,0.39
@@ -7695,7 +7606,7 @@ This was found by the new invalidation/gather test I am adding in
 preparation for ARMv8. Claude deduced the root cause.
 
 As far as I remember nothing relies on unmapping a large entry, so this is
-likely not a triggerable bug.",2026-05-01T15:16:36.140,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+likely not a triggerable bug.",2026-05-01T15:16:36.140,8.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.2
 CVE-2026-31736,"In the Linux kernel, the following vulnerability has been resolved:
 
 net: ethernet: mtk_ppe: avoid NULL deref when gmac0 is disabled
@@ -7739,7 +7650,7 @@ asynchronous algorithms, causing the crypto API to select them for users
 that request only synchronous algorithms.  This causes crashes (at
 least).  Fix this by adding the flag like what the other drivers do.
 Also remove the unnecessary CRYPTO_ALG_TYPE_* flags, since those just
-get ignored and overridden by the registration function anyway.",2026-05-01T15:16:36.600,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+get ignored and overridden by the registration function anyway.",2026-05-01T15:16:36.600,8.8,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31740,"In the Linux kernel, the following vulnerability has been resolved:
 
 counter: rz-mtu3-cnt: do not use struct rz_mtu3_channel's dev member
@@ -7816,7 +7727,7 @@ past the end of the 25-entry pointer array in a buffer allocated for
 Fix this by checking whether the console dimensions changed while in the
 alternate screen. If they did, free the stale saved buffer instead of
 restoring it. The unicode screen will be lazily rebuilt via
-vc_uniscr_check() when next needed.",2026-05-01T15:16:36.937,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+vc_uniscr_check() when next needed.",2026-05-01T15:16:36.937,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31743,"In the Linux kernel, the following vulnerability has been resolved:
 
 nvmem: zynqmp_nvmem: Fix buffer size in DMA and memcpy
@@ -7824,7 +7735,7 @@ nvmem: zynqmp_nvmem: Fix buffer size in DMA and memcpy
 Buffer size used in dma allocation and memcpy is wrong.
 It can lead to undersized DMA buffer access and possible
 memory corruption. use correct buffer size in dma_alloc_coherent
-and memcpy.",2026-05-01T15:16:37.047,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+and memcpy.",2026-05-01T15:16:37.047,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31744,"In the Linux kernel, the following vulnerability has been resolved:
 
 PM: EM: Fix NULL pointer dereference when perf domain ID is not found
@@ -8068,7 +7979,7 @@ usb: usbtmc: Flush anchored URBs in usbtmc_release
 
 When calling usbtmc_release, pending anchored URBs must be flushed or
 killed to prevent use-after-free errors (e.g. in the HCD giveback
-path). Call usbtmc_draw_down() to allow anchored URBs to be completed.",2026-05-01T15:16:38.807,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+path). Call usbtmc_draw_down() to allow anchored URBs to be completed.",2026-05-01T15:16:38.807,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31759,"In the Linux kernel, the following vulnerability has been resolved:
 
 usb: ulpi: fix double free in ulpi_register_interface() error path
@@ -8101,7 +8012,7 @@ iio_device_register() should be at the end of the probe function to
 prevent race conditions.
 
 Place iio_device_register() at the end of the probe function and place
-iio_device_unregister() accordingly.",2026-05-01T15:16:39.153,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+iio_device_unregister() accordingly.",2026-05-01T15:16:39.153,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31762,"In the Linux kernel, the following vulnerability has been resolved:
 
 iio: gyro: mpu3050: Fix irq resource leak
@@ -8220,7 +8131,7 @@ potentially corrupting kernel doorbell space.
 Validate that doorbell_offset falls within the doorbell BO before
 computing the BAR index, using u64 arithmetic to prevent overflow.
 
-(cherry picked from commit de1ef4ffd70e1d15f0bf584fd22b1f28cbd5e2ec)",2026-05-01T15:16:39.763,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+(cherry picked from commit de1ef4ffd70e1d15f0bf584fd22b1f28cbd5e2ec)",2026-05-01T15:16:39.763,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31767,"In the Linux kernel, the following vulnerability has been resolved:
 
 drm/i915/dsi: Don't do DSC horizontal timing adjustments in command mode
@@ -8248,7 +8159,7 @@ Add a DMA-safe buffer and use it for spi_read() instead of a stack
 memory. All SPI buffers must be DMA-safe.
 
 Since we only need up to 3 bytes, we just use a u8[] instead of __be16
-and __be32 and change the conversion functions appropriately.",2026-05-01T15:16:39.977,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+and __be32 and change the conversion functions appropriately.",2026-05-01T15:16:39.977,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31769,"In the Linux kernel, the following vulnerability has been resolved:
 
 gpib: fix use-after-free in IO ioctl handlers
@@ -8283,7 +8194,7 @@ counter is only modified by the kernel IO paths.
 
 The lock ordering is consistent (big_gpib_mutex -> descriptors_mutex)
 and the handlers only hold descriptors_mutex briefly during the lookup,
-so there is no deadlock risk and no impact on IO throughput.",2026-05-01T15:16:40.090,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+so there is no deadlock risk and no impact on IO throughput.",2026-05-01T15:16:40.090,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31770,"In the Linux kernel, the following vulnerability has been resolved:
 
 hwmon: (occ) Fix division by zero in occ_show_power_1()
@@ -8332,7 +8243,7 @@ Call the helper from hci_conn_request_evt(), hci_conn_complete_evt(),
 hci_sync_conn_complete_evt(), le_conn_complete_evt(),
 hci_le_adv_report_evt(), hci_le_ext_adv_report_evt(),
 hci_le_direct_adv_report_evt(), hci_le_pa_sync_established_evt(), and
-hci_le_past_received_evt().",2026-05-01T15:16:40.337,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+hci_le_past_received_evt().",2026-05-01T15:16:40.337,8.1,HIGH,ADJACENT_NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31772,"In the Linux kernel, the following vulnerability has been resolved:
 
 Bluetooth: hci_sync: fix stack buffer overflow in hci_le_big_create_sync
@@ -8355,7 +8266,7 @@ sync worker, causing a KASAN-detectable stack-out-of-bounds write:
 
 Fix this by changing the DEFINE_FLEX count from the incorrect 0x11 to
 HCI_MAX_ISO_BIS, which matches the maximum number of BIS entries that
-conn->bis can actually carry.",2026-05-01T15:16:40.470,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+conn->bis can actually carry.",2026-05-01T15:16:40.470,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31773,"In the Linux kernel, the following vulnerability has been resolved:
 
 Bluetooth: SMP: derive legacy responder STK authentication from MITM state
@@ -8371,7 +8282,7 @@ side requested HIGH security. Use the established MITM state when
 storing the responder STK so the key metadata matches the pairing result.
 
 This also keeps the legacy path aligned with the Secure Connections code,
-which already treats JUST_WORKS/JUST_CFM as unauthenticated.",2026-05-01T15:16:40.587,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+which already treats JUST_WORKS/JUST_CFM as unauthenticated.",2026-05-01T15:16:40.587,8.8,HIGH,ADJACENT_NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31774,"In the Linux kernel, the following vulnerability has been resolved:
 
 io_uring/net: fix slab-out-of-bounds read in io_bundle_nbufs()
@@ -8404,7 +8315,7 @@ entries.
 
 Fix this by rejecting negative sr->len values early in both
 io_sendmsg_prep() and io_recvmsg_prep(). Since sqe->len is __u32,
-any value > INT_MAX indicates overflow and is not a valid length.",2026-05-01T15:16:40.720,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+any value > INT_MAX indicates overflow and is not a valid length.",2026-05-01T15:16:40.720,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31775,"In the Linux kernel, the following vulnerability has been resolved:
 
 ALSA: ctxfi: Don't enumerate SPDIF1 at DAIO initialization
@@ -8477,7 +8388,7 @@ as large as the number of bytes to copy. Otherwise, results->matches may
 contain unwanted data. To guarantee safety, extend the validation in one
 of the checks to ensure sufficient packet length.
 
-Found by Linux Verification Center (linuxtesting.org) with SVACE.",2026-05-01T15:16:41.330,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+Found by Linux Verification Center (linuxtesting.org) with SVACE.",2026-05-01T15:16:41.330,8.1,HIGH,ADJACENT_NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-31780,"In the Linux kernel, the following vulnerability has been resolved:
 
 wifi: wilc1000: fix u8 overflow in SSID scan buffer size calculation
@@ -8492,7 +8403,7 @@ This causes kmalloc to allocate only 75 bytes while the subsequent
 memcpy writes up to 331 bytes into the buffer, resulting in a 256-byte
 heap buffer overflow.
 
-Widen valuesize from u8 to u32 to accommodate the full range.",2026-05-01T15:16:41.453,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+Widen valuesize from u8 to u32 to accommodate the full range.",2026-05-01T15:16:41.453,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31781,"In the Linux kernel, the following vulnerability has been resolved:
 
 drm/ioc32: stop speculation on the drm_compat_ioctl path
@@ -8510,7 +8421,7 @@ present within it. The software event PMU isn't the x86_hybrid_pmu and
 a container_of operation in intel_pmu_set_acr_caused_constr (via the
 hybrid helper) could cause out of bound memory reads. Avoid this by
 guarding the call to intel_pmu_set_acr_caused_constr with an
-is_x86_event check.",2026-05-01T15:16:41.707,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+is_x86_event check.",2026-05-01T15:16:41.707,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-31783,"In the Linux kernel, the following vulnerability has been resolved:
 
 spi: amlogic: spifc-a4: unregister ECC engine on probe failure and remove() callback
@@ -8593,7 +8504,7 @@ at all.
    __do_sys_io_uring_enter+0xa98/0x1590
   Allocated by task 103:
   The buggy address is located 12 bytes to the right of
-   allocated 584-byte region [ffff888002bcc000, ffff888002bcc248)",2026-05-01T15:16:44.450,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+   allocated 584-byte region [ffff888002bcc000, ffff888002bcc248)",2026-05-01T15:16:44.450,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43007,"In the Linux kernel, the following vulnerability has been resolved:
 
 accel/qaic: Handle DBC deactivation if the owner went away
@@ -8677,7 +8588,7 @@ After:
   mark_precise: frame0: regs=r1 stack= before 0: (b7) r1 = 8
   6: R2=8 R3=fp8
   6: (b7) r0 = 0                        ; R0=0
-  7: (95) exit",2026-05-01T15:16:44.770,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+  7: (95) exit",2026-05-01T15:16:44.770,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43010,"In the Linux kernel, the following vulnerability has been resolved:
 
 bpf: Reject sleepable kprobe_multi programs at attach time
@@ -8726,7 +8637,7 @@ net/x25/x25_in.c:x25_backlog_rcv() {
     ...
     if (!queued)
         kfree_skb(skb);
-}",2026-05-01T15:16:44.993,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+}",2026-05-01T15:16:44.993,9.8,CRITICAL,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-43012,"In the Linux kernel, the following vulnerability has been resolved:
 
 net/mlx5: Fix switchdev mode rollback in case of failure
@@ -8978,7 +8889,7 @@ Freed by task 15:
  slab_free mm/slub.c:6165 [inline]
  kmem_cache_free+0x187/0x630 mm/slub.c:6295
  rcu_do_batch kernel/rcu/tree.c:
----truncated---",2026-05-01T15:16:45.677,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+---truncated---",2026-05-01T15:16:45.677,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43017,"In the Linux kernel, the following vulnerability has been resolved:
 
 Bluetooth: MGMT: validate mesh send advertising payload length
@@ -9002,7 +8913,7 @@ hci_conn lookup and field access must be covered by hdev lock in
 hci_le_remote_conn_param_req_evt, otherwise it's possible it is freed
 concurrently.
 
-Extend the hci_dev_lock critical section to cover all conn usage.",2026-05-01T15:16:45.980,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+Extend the hci_dev_lock critical section to cover all conn usage.",2026-05-01T15:16:45.980,8.8,HIGH,ADJACENT_NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-43019,"In the Linux kernel, the following vulnerability has been resolved:
 
 Bluetooth: hci_conn: fix potential UAF in set_cig_params_sync
@@ -9012,7 +8923,7 @@ set_cig_params_sync, otherwise it's possible it is freed concurrently.
 
 Take hdev lock to prevent hci_conn from being deleted or modified
 concurrently.  Just RCU lock is not suitable here, as we also want to
-avoid ""tearing"" in the configuration.",2026-05-01T15:16:46.103,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+avoid ""tearing"" in the configuration.",2026-05-01T15:16:46.103,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43020,"In the Linux kernel, the following vulnerability has been resolved:
 
 Bluetooth: MGMT: validate LTK enc_size on load
@@ -9112,7 +9023,7 @@ Fix this by:
 - Adding sco_pi(sk)->conn check in sco_chan_add() to prevent
   double-attach of a socket to multiple connections
 - Adding hci_conn_drop() on sco_chan_add failure to prevent
-  HCI connection leaks",2026-05-01T15:16:46.610,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+  HCI connection leaks",2026-05-01T15:16:46.610,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43024,"In the Linux kernel, the following vulnerability has been resolved:
 
 netfilter: nf_tables: reject immediate NF_QUEUE verdict
@@ -9147,7 +9058,7 @@ provided by userspace than the existing master conntrack helper:
 Allowing to read kernel memory bytes off the expectation boundary.
 
 CTA_EXPECT_HELP_NAME is still used to offer the helper name to userspace
-via netlink dump.",2026-05-01T15:16:46.903,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+via netlink dump.",2026-05-01T15:16:46.903,7.3,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43026,"In the Linux kernel, the following vulnerability has been resolved:
 
 netfilter: ctnetlink: zero expect NAT fields when CTA_EXPECT_NAT absent
@@ -9209,7 +9120,7 @@ netfilter: x_tables: ensure names are nul-terminated
 Reject names that lack a \0 character before feeding them
 to functions that expect c-strings.
 
-Fixes tag is the most recent commit that needs this change.",2026-05-01T15:16:47.297,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+Fixes tag is the most recent commit that needs this change.",2026-05-01T15:16:47.297,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43029,"In the Linux kernel, the following vulnerability has been resolved:
 
 mptcp: fix soft lockup in mptcp_recvmsg()
@@ -9258,14 +9169,14 @@ RDX: 00000000000003ff RSI: 00007ffc3c4bb150 RDI: 0000000000000004
 RBP: 00007ffc3c4bb570 R08: 0000000000000000 R09: 0000000000000000
 R10: 0000000000000103 R11: 0000000000000246 R12: 00005605dbc00be0
 R13: 00007ffc3c4bb650 R14: 0000000000000000 R15: 0000000000000000
- </TASK>",2026-05-01T15:16:47.427,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+ </TASK>",2026-05-01T15:16:47.427,7.5,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-43030,"In the Linux kernel, the following vulnerability has been resolved:
 
 bpf: Fix regsafe() for pointers to packet
 
 In case rold->reg->range == BEYOND_PKT_END && rcur->reg->range == N
 regsafe() may return true which may lead to current state with
-valid packet range not being explored. Fix the bug.",2026-05-01T15:16:47.557,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+valid packet range not being explored. Fix the bug.",2026-05-01T15:16:47.557,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43031,"In the Linux kernel, the following vulnerability has been resolved:
 
 net: xilinx: axienet: Fix BQL accounting for multi-BD TX packets
@@ -9282,7 +9193,7 @@ The SKB pointer is stored only on the last BD of a packet. When that
 BD completes, use skb->len for the byte count instead of summing
 per-BD status lengths. This matches netdev_sent_queue(), which debits
 skb->len, and naturally survives across polls because no partial
-packet contributes to the accumulator.",2026-05-01T15:16:47.680,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+packet contributes to the accumulator.",2026-05-01T15:16:47.680,7.5,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-43032,"In the Linux kernel, the following vulnerability has been resolved:
 
 NFC: pn533: bound the UART receive buffer
@@ -9307,7 +9218,7 @@ simply be re-copied from the source.
 However, the data to be hashed need to be rearranged accordingly.
 
 
-Thanks,",2026-05-01T15:16:47.910,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+Thanks,",2026-05-01T15:16:47.910,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43034,"In the Linux kernel, the following vulnerability has been resolved:
 
 bnxt_en: set backing store type from query type
@@ -9367,7 +9278,7 @@ a fixed 40-byte stack buffer (IP_OPTIONS_DATA_FIXED_SIZE).
 
 To fix this we clear skb2->cb[], as suggested by Oskar Kjos.
 
-Also add minimal IPv4 header validation (version == 4, ihl >= 5).",2026-05-01T15:16:48.383,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+Also add minimal IPv4 header validation (version == 4, ihl >= 5).",2026-05-01T15:16:48.383,9.8,CRITICAL,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-43038,"In the Linux kernel, the following vulnerability has been resolved:
 
 ipv6: icmp: clear skb2->cb[] in ip6_err_gen_icmpv6_unreach()
@@ -9399,7 +9310,7 @@ Sashiko AI-review observed:
 This patch implements the first suggestion.
 
 I am not sure if ip6ip6_err() needs to be changed.
-A separate patch would be better anyway.",2026-05-01T15:16:48.533,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+A separate patch would be better anyway.",2026-05-01T15:16:48.533,9.8,CRITICAL,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-43039,"In the Linux kernel, the following vulnerability has been resolved:
 
 net: ti: icssg-prueth: fix missing data copy and wrong recycle in ZC RX dispatch
@@ -9420,7 +9331,7 @@ a page_pool that does not own them, corrupting page_pool state.
 The non-ZC path (emac_rx_packet) does not have these issues because it
 uses napi_build_skb() to wrap the existing page_pool page directly,
 requiring no copy, and correctly marks for recycle since the page comes
-from page_pool_dev_alloc_pages().",2026-05-01T15:16:50.000,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+from page_pool_dev_alloc_pages().",2026-05-01T15:16:50.000,9.8,CRITICAL,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-43040,"In the Linux kernel, the following vulnerability has been resolved:
 
 net: ipv6: ndisc: fix ndisc_ra_useropt to initialize nduseropt_padX fields to zero to prevent an info-leak
@@ -9462,7 +9373,7 @@ Note that mpls_label_ok is also susceptible to this, so the check
 against RTA_DST in rtm_to_route_config, done outside platform_mutex,
 is not sufficient. This value gets passed to mpls_label_ok once more
 in both mpls_route_add and mpls_route_del, so there is no issue, but
-that additional check must not be removed.",2026-05-01T15:16:50.423,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+that additional check must not be removed.",2026-05-01T15:16:50.423,7.1,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43043,"In the Linux kernel, the following vulnerability has been resolved:
 
 crypto: af-alg - fix NULL pointer dereference in scatterwalk
@@ -9489,7 +9400,7 @@ corrupt neighbouring memory.
 
 The rounding was performed, but never actually used for the allocation.
 Fix this by replacing kmemdup with kmalloc for a larger buffer,
-followed by memcpy.",2026-05-01T15:16:50.703,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+followed by memcpy.",2026-05-01T15:16:50.703,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43045,"In the Linux kernel, the following vulnerability has been resolved:
 
 mshv: Fix error handling in mshv_region_pin
@@ -9587,7 +9498,7 @@ side-effects such as OOB writes.
 
 Add a check to ensure that the report ID in the response, matches the
 one that was requested.  If it doesn't, omit reporting the raw event and
-return early.",2026-05-01T15:16:51.073,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+return early.",2026-05-01T15:16:51.073,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43048,"In the Linux kernel, the following vulnerability has been resolved:
 
 HID: core: Mitigate potential OOB by removing bogus memset()
@@ -9604,7 +9515,7 @@ large enough to fill the associated report.
 
 Suggested-by Benjamin Tissoires <bentiss@kernel.org>
 
-[bentiss: changed the return value]",2026-05-01T15:16:51.193,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+[bentiss: changed the return value]",2026-05-01T15:16:51.193,8.8,HIGH,ADJACENT_NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-43049,"In the Linux kernel, the following vulnerability has been resolved:
 
 HID: logitech-hidpp: Prevent use-after-free on force feedback initialisation failure
@@ -9680,7 +9591,7 @@ the processed data and battery status, while report 0x04 (which
 falls through to 0x03) requires 32 bytes.
 
 Add explicit length checks for these report IDs and log a warning if
-a short report is received.",2026-05-01T15:16:51.543,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+a short report is received.",2026-05-01T15:16:51.543,8.1,HIGH,ADJACENT_NETWORK,LOW,CWE-Unknown,,,False,0.27999999999999997
 CVE-2026-43052,"In the Linux kernel, the following vulnerability has been resolved:
 
 wifi: mac80211: check tdls flag in ieee80211_tdls_oper
@@ -9808,7 +9719,7 @@ failure status when checking iocb->ki_write_stream > max_write_streams
 in the block device.
 
 Let's just use kzalloc_flex when allocating the aio_cmd and let
-ki_write_stream=0 to fix this issue.",2026-05-01T15:16:52.040,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+ki_write_stream=0 to fix this issue.",2026-05-01T15:16:52.040,7.5,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-43056,"In the Linux kernel, the following vulnerability has been resolved:
 
 net: mana: fix use-after-free in add_adev() error path
@@ -9823,7 +9734,7 @@ to adev->id may result in a use-after-free.
 
 Fix this by saving the allocated auxiliary device id in a local
 variable before calling auxiliary_device_add(), and use that saved id
-in the cleanup path after auxiliary_device_uninit().",2026-05-01T15:16:52.147,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+in the cleanup path after auxiliary_device_uninit().",2026-05-01T15:16:52.147,7.8,HIGH,LOCAL,LOW,CWE-Unknown,,,False,0.18
 CVE-2026-43057,"In the Linux kernel, the following vulnerability has been resolved:
 
 net: correctly handle tunneled traffic on IPV6_CSUM GSO fallback
@@ -9839,7 +9750,7 @@ must be checked instead. Extend the check accordingly.
 
 A special case is tunneled packets without inner IP protocol. Such as
 RFC 6951 SCTP in UDP. Those are not standard IPv6 followed by
-transport header either, so also must revert to the software GSO path.",2026-05-01T15:16:52.260,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+transport header either, so also must revert to the software GSO path.",2026-05-01T15:16:52.260,7.5,HIGH,NETWORK,LOW,CWE-Unknown,,,False,0.39
 CVE-2026-43504,"An issue was discovered in Prosody before 0.12.6 and 1.0.0 through 13.0.0 before 13.0.5, when mod_proxy65 is enabled. Because mod_proxy65 mishandles access control in a paused scenario, relaying of unauthenticated traffic can occur.",2026-05-01T15:16:52.380,6.5,MEDIUM,NETWORK,LOW,CWE-863,CWE-863,prosody/prosody,False,0.39
 CVE-2026-43505,"An issue was discovered in Prosody before 0.12.6 and 1.0.0 through 13.0.0 before 13.0.5, when mod_proxy65 is enabled. Because mod_proxy65 mishandles access control in the activation scenario, relaying of unauthenticated traffic can occur.",2026-05-01T15:16:52.653,6.5,MEDIUM,NETWORK,LOW,CWE-420,CWE-420,prosody/prosody,False,0.39
 CVE-2026-43506,An issue was discovered in Prosody before 0.12.6 and 1.0.0 through 13.0.0 before 13.0.5. A Denial of Service can occur via memory exhaustion caused by memory leaks from unauthenticated connections.,2026-05-01T15:16:52.820,5.3,MEDIUM,NETWORK,LOW,CWE-401,CWE-401,prosody/prosody,False,0.39
@@ -10046,3 +9957,33 @@ An attacker could exploit this to smuggle malicious HTTP requests via a front-en
 CVE-2026-7673,A vulnerability was detected in crmeb_java up to 1.3.4. This vulnerability affects unknown code of the file crmeb/crmeb-service/src/main/java/com/zbkj/service/service/impl/UploadServiceImpl.java of the component Admin Upload. Performing a manipulation of the argument model results in unrestricted upload. Remote exploitation of the attack is possible. The exploit is now public and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T02:17:12.537,4.7,MEDIUM,NETWORK,LOW,CWE-284,"CWE-284,CWE-434",,False,0.12
 CVE-2026-7674,A flaw has been found in Shenzhen Libituo Technology LBT-T300-HW1 up to 1.2.8. This issue affects the function start_single_service of the component Web Management Interface. Executing a manipulation of the argument vpn_pptp_server/vpn_l2tp_server can lead to buffer overflow. The attack can be executed remotely. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T02:17:12.993,8.8,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-120",,False,0.27999999999999997
 CVE-2026-7675,A vulnerability has been found in Shenzhen Libituo Technology LBT-T300-HW1 up to 1.2.8. Impacted is the function start_lan of the file /apply.cgi. The manipulation of the argument Channel/ApCliSsid leads to buffer overflow. The attack is possible to be carried out remotely. The exploit has been disclosed to the public and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T03:16:15.613,8.8,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-120",,False,0.27999999999999997
+CVE-2026-7676,A vulnerability was found in kerwincui FastBee up to 1.2.1. The affected element is the function ToolController.download of the file springboot/fastbee-open-api/src/main/java/com/fastbee/data/controller/ToolController.java of the component Tool Download Endpoint. The manipulation of the argument fileName results in path traversal. The attack may be performed from remote. The exploit has been made public and could be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T05:15:58.660,4.3,MEDIUM,NETWORK,LOW,CWE-22,CWE-22,,False,0.27999999999999997
+CVE-2026-7677,A vulnerability was determined in kerwincui FastBee up to 1.2.1. The impacted element is the function Add of the file springboot/fastbee-admin/src/main/java/com/fastbee/web/controller/system/SysNoticeController.java of the component System Notice Handler. This manipulation of the argument noticeContent causes cross site scripting. It is possible to initiate the attack remotely. The exploit has been publicly disclosed and may be utilized. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T05:15:58.857,3.5,LOW,NETWORK,LOW,CWE-79,"CWE-79,CWE-94",,False,0.21000000000000002
+CVE-2026-7678,A vulnerability was identified in YunaiV yudao-cloud up to 2026.01. This affects the function getDataBySQL of the file yudao-module-report-biz/src/main/java/io/github/ruoyi/report/service/impl/GoViewDataServiceImpl.java. Such manipulation leads to sql injection. It is possible to launch the attack remotely. The exploit is publicly available and might be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T05:15:59.030,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-89",,False,0.27999999999999997
+CVE-2026-7679,A security flaw has been discovered in YunaiV yudao-cloud up to 2026.01. This impacts the function getAccessToken of the file yudao-module-system-biz/src/main/java/io/github/ruoyi/common/oauth2/service/impl/OAuth2TokenServiceImpl.java. Performing a manipulation results in improper authentication. The attack can be initiated remotely. The exploit has been released to the public and may be used for attacks. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T05:15:59.207,7.3,HIGH,NETWORK,LOW,CWE-287,CWE-287,,False,0.39
+CVE-2026-5063,"The NEX-Forms – Ultimate Forms Plugin for WordPress plugin for WordPress is vulnerable to Stored Cross-Site Scripting via POST parameter key names in the submit_nex_form() function in versions up to, and including, 9.1.11 due to insufficient input sanitization and output escaping. This makes it possible for unauthenticated attackers to inject arbitrary web scripts in pages that will execute whenever a user accesses an injected page.",2026-05-03T06:15:57.650,7.2,HIGH,NETWORK,LOW,CWE-79,CWE-79,,False,0.39
+CVE-2026-7680,A weakness has been identified in jsbroks COCO Annotator up to 0.11.1. Affected is an unknown function of the file backend/webserver/api/datasets.py of the component Data Endpoint. Executing a manipulation of the argument folder can lead to path traversal. The attack can be launched remotely. The exploit has been made available to the public and could be used for attacks. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T06:15:57.983,4.3,MEDIUM,NETWORK,LOW,CWE-22,CWE-22,,False,0.27999999999999997
+CVE-2026-7681,A security vulnerability has been detected in jsbroks COCO Annotator up to 0.11.1. Affected by this vulnerability is an unknown functionality of the file backend/webserver/api/datasets.py of the component Dataset API. The manipulation of the argument DatasetId leads to authorization bypass. The attack may be initiated remotely. The exploit has been disclosed publicly and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T06:15:58.190,6.5,MEDIUM,NETWORK,LOW,CWE-285,"CWE-285,CWE-639",,False,0.39
+CVE-2026-5337,"During the analysis, it was identified that authenticated attackers with Subscriber-level access or higher are able to perform an Insecure Direct Object Reference (IDOR) attack. This vulnerability exists because the Frontend File Manager Plugin WordPress plugin through 23.6 does not properly validate user authorization for the requested uploaded file when processing download requests. By modifying the value of the 'file_id' parameter in the download endpoint (e.g., http://localhost/?do=wpfm_download&file_id=40&nm_file_nonce=a36fb893f1), an attacker can access files belonging to other users, including privileged users such as administrators. This allows unauthorized access/read to sensitive data stored  within the application.",2026-05-03T07:16:24.687,0.0,UNKNOWN,UNKNOWN,UNKNOWN,CWE-Unknown,,,False,0.0
+CVE-2026-7682,A security flaw has been discovered in Edimax BR-6208AC 1.02. The impacted element is the function setWAN of the file /goform/setWAN of the component L2TP Mode. The manipulation of the argument L2TPUserName results in command injection. It is possible to launch the attack remotely. The exploit has been released to the public and may be used for attacks. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T07:16:24.807,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-77",,False,0.27999999999999997
+CVE-2026-7683,A weakness has been identified in Edimax BR-6428nC up to 1.16. This affects an unknown function of the file /goform/setWAN of the component Web Interface. This manipulation of the argument pppUserName/pptpUserName causes command injection. The attack can be initiated remotely. The exploit has been made available to the public and could be used for attacks. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T07:16:25.010,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-77",,False,0.27999999999999997
+CVE-2026-7684,A security vulnerability has been detected in Edimax BR-6428nC up to 1.16. This impacts an unknown function of the file /goform/setWAN. Such manipulation of the argument pptpDfGateway  leads to buffer overflow. The attack can be launched remotely. The exploit has been disclosed publicly and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T07:16:25.200,8.8,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-120",,False,0.27999999999999997
+CVE-2026-7685,A vulnerability was detected in Edimax BR-6208AC up to 1.02. Affected is an unknown function of the file /goform/setWAN. Performing a manipulation of the argument pptpDfGateway  results in buffer overflow. The attack may be initiated remotely. The exploit is now public and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T07:16:25.390,8.8,HIGH,NETWORK,LOW,CWE-119,"CWE-119,CWE-120",,False,0.27999999999999997
+CVE-2026-7686,"A vulnerability was found in eyeo Adblock Plus up to 4.36.2 on Chrome. Affected by this vulnerability is the function postMessage of the file premium.preload.js of the component Legacy Premium Activation. Performing a manipulation results in improper access controls. Remote exploitation of the attack is possible. The exploit has been made public and could be used. Upgrading the affected component is recommended. The vendor provides additional details: ""The affected code path is a legacy Premium activation flow that has been deprecated. eyeo has already migrated to a new user account-based licensing system. The exploit does not grant permanent Premium access. The licensing server issues a short-lived trial license (valid for approximately 24 hours) for any submitted userId. On the next license check, the server validates against a real subscription and the trial expires if no valid subscription is found. The researcher's claim of permanently unlocking all Premium features is therefore incorrect. (...) The old flow has been present for years and has not been weaponized at scale to our knowledge. The risk to eyeo and to users is minimal.""",2026-05-03T08:16:01.073,5.3,MEDIUM,NETWORK,LOW,CWE-266,"CWE-266,CWE-284",,False,0.39
+CVE-2026-7687,A vulnerability was determined in langflow-ai langflow up to 1.8.4. Affected by this issue is the function CodeParser.parse_callable_details of the file src/lfx/src/lfx/custom/code_parser/code_parser.py of the component Full Builtins Module Handler. Executing a manipulation can lead to command injection. The attack can be executed remotely. The exploit has been publicly disclosed and may be utilized. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T09:16:03.680,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-77",,False,0.27999999999999997
+CVE-2026-7688,A vulnerability was identified in Dolibarr ERP CRM up to 23.0.2. This affects the function _checkValForAPI of the file htdocs/expedition/class/expedition.class.php of the component Shipments API Endpoint. The manipulation of the argument fields leads to sql injection. The attack is possible to be carried out remotely. A high degree of complexity is needed for the attack. It is indicated that the exploitability is difficult. The exploit is publicly available and might be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T10:16:17.170,5.0,MEDIUM,NETWORK,HIGH,CWE-74,"CWE-74,CWE-89",,False,0.16
+CVE-2026-7689,A security flaw has been discovered in Dolibarr ERP CRM up to 23.0.2. This vulnerability affects the function dol_verifyHash in the library htdocs/core/lib/security.lib.php of the component Online Signature Module. The manipulation results in improper verification of cryptographic signature. The attack may be performed from remote. Attacks of this nature are highly complex. It is stated that the exploitability is difficult. The exploit has been released to the public and may be used for attacks. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T10:16:17.470,3.7,LOW,NETWORK,HIGH,CWE-345,"CWE-345,CWE-347",,False,0.22000000000000003
+CVE-2026-7690,"A weakness has been identified in Wavlink WL-WN570HA1 R70HA1 V1410_221110. This issue affects the function set_sys_adm of the file /cgi-bin/adm.cgi. This manipulation of the argument Username causes command injection. It is possible to initiate the attack remotely. The exploit has been made available to the public and could be used for attacks. Once again the vendors acted very professional and confirms, ""that the WN570HA1 firmware version R70HA1 V1410_221110 has been removed from our website."" This vulnerability only affects products that are no longer supported by the maintainer.",2026-05-03T10:16:17.660,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-77",,False,0.27999999999999997
+CVE-2026-7691,"A security vulnerability has been detected in Wavlink WL-WN570HA1 R70HA1 V1410_221110. Impacted is the function set_sys_cmd of the file /cgi-bin/adm.cgi. Such manipulation of the argument command leads to command injection. It is possible to launch the attack remotely. The exploit has been disclosed publicly and may be used. Once again the vendors acted very professional and confirms, ""that the WN570HA1 firmware version R70HA1 V1410_221110 has been removed from our website."" This vulnerability only affects products that are no longer supported by the maintainer.",2026-05-03T11:16:13.263,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-77",,False,0.27999999999999997
+CVE-2026-7692,"A vulnerability was detected in Wavlink WL-WN570HA1 R70HA1 V1410_221110. The affected element is the function ping_ddns of the file /cgi-bin/adm.cgi. Performing a manipulation of the argument DDNS results in command injection. The attack can be initiated remotely. The exploit is now public and may be used. Once again the vendors acted very professional and confirms, ""that the WN570HA1 firmware version R70HA1 V1410_221110 has been removed from our website."" This vulnerability only affects products that are no longer supported by the maintainer.",2026-05-03T11:16:13.927,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-77",,False,0.27999999999999997
+CVE-2026-7694,A flaw has been found in Acrel Electrical ECEMS Enterprise Microgrid Energy Efficiency Management System 1.3.0. The impacted element is an unknown function of the file /SubstationWEBV2/main/elecMaxMinAvgValue. Executing a manipulation of the argument fCircuitids can lead to sql injection. The attack can be launched remotely. The exploit has been published and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T12:15:59.700,7.3,HIGH,NETWORK,LOW,CWE-74,"CWE-74,CWE-89",,False,0.39
+CVE-2026-7695,A vulnerability has been found in Acrel Electrical EEMS Enterprise Power Operation and Maintenance Cloud Platform 1.3.0. This affects an unknown function of the file /SubstationWEBV2/main/elecMaxMinAvgValue. The manipulation of the argument fCircuitids leads to sql injection. The attack may be initiated remotely. The exploit has been disclosed to the public and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T13:16:08.797,7.3,HIGH,NETWORK,LOW,CWE-74,"CWE-74,CWE-89",,False,0.39
+CVE-2026-7696,A vulnerability was found in Acrel Electrical EEMS Enterprise Power Operation and Maintenance Cloud Platform 1.3.0. This impacts an unknown function of the file /SubstationWEBV2/main/uploadH5Files. The manipulation of the argument File results in unrestricted upload. The attack may be launched remotely. The exploit has been made public and could be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T13:16:09.010,6.3,MEDIUM,NETWORK,LOW,CWE-284,"CWE-284,CWE-434",,False,0.27999999999999997
+CVE-2026-7697,A vulnerability was determined in AMTT Hotel Broadband Operation System 1.0. Affected is an unknown function of the file /manager/card/cardhand_submit.php. This manipulation of the argument ID causes sql injection. Remote exploitation of the attack is possible. The exploit has been publicly disclosed and may be utilized. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T14:16:26.930,4.7,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-89",,False,0.12
+CVE-2026-7698,A vulnerability was identified in Tiandy Easy7 Integrated Management Platform 7.17.0. Affected by this vulnerability is an unknown functionality of the file /Easy7/rest/systemInfo/updateDbBackupInfo. Such manipulation of the argument week leads to os command injection. The attack can be executed remotely. The exploit is publicly available and might be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T14:16:27.107,7.3,HIGH,NETWORK,LOW,CWE-77,"CWE-77,CWE-78",,False,0.39
+CVE-2026-7699,A security flaw has been discovered in Dromara MaxKey up to 3.5.13. Affected by this issue is the function StrUtils.checkSqlInjection of the file StrUtils.java. Performing a manipulation of the argument filtersfields results in sql injection. The attack is possible to be carried out remotely. The exploit has been released to the public and may be used for attacks. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T15:15:59.483,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-89",,False,0.27999999999999997
+CVE-2026-7700,A weakness has been identified in langflow-ai langflow up to 1.8.4. This affects the function eval of the file src/lfx/src/lfx/components/llm_operations/lambda_filter.p of the component LambdaFilterComponent. Executing a manipulation can lead to code injection. The attack may be performed from remote. The exploit has been made available to the public and could be used for attacks. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T15:15:59.693,6.3,MEDIUM,NETWORK,LOW,CWE-74,"CWE-74,CWE-94",,False,0.27999999999999997
+CVE-2026-7701,A security vulnerability has been detected in Telegram Desktop up to 6.7.5. This vulnerability affects the function RequestButton of the file Telegram/SourceFiles/boxes/url_auth_box.cpp of the component Bot API. The manipulation of the argument login_url leads to null pointer dereference. It is possible to initiate the attack remotely. The exploit has been disclosed publicly and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T16:15:57.757,4.3,MEDIUM,NETWORK,LOW,CWE-404,"CWE-404,CWE-476",,False,0.27999999999999997
+CVE-2026-7702,A vulnerability was detected in toeverything AFFiNE up to 0.26.3. This issue affects the function allowDocPreview of the file /workspace/:workspaceId/:docId of the component Public Markdown Preview Endpoint. The manipulation results in authorization bypass. It is possible to launch the attack remotely. The exploit is now public and may be used. The vendor was contacted early about this disclosure but did not respond in any way.,2026-05-03T16:15:57.937,5.3,MEDIUM,NETWORK,LOW,CWE-285,"CWE-285,CWE-639",,False,0.39
+CVE-2026-7703,A flaw has been found in AV Stumpfl Pixera Two Media Server up to 25.2 R2. Impacted is an unknown function of the component Websocket API. This manipulation causes code injection. The attack can be initiated remotely. The exploit has been published and may be used. Upgrading to version 25.2 R3 is recommended to address this issue. Upgrading the affected component is advised.,2026-05-03T17:16:13.393,7.3,HIGH,NETWORK,LOW,CWE-74,"CWE-74,CWE-94",,False,0.39
+CVE-2026-7704,A vulnerability has been found in AV Stumpfl Pixera Two Media Server up to 25.1 R2. The affected element is an unknown function of the component Service Port 1338. Such manipulation leads to path traversal. The exploit has been disclosed to the public and may be used. Upgrading to version 25.2 R3 is sufficient to fix this issue. It is advisable to upgrade the affected component.,2026-05-03T17:16:13.580,4.3,MEDIUM,ADJACENT_NETWORK,LOW,CWE-22,CWE-22,,False,0.27999999999999997

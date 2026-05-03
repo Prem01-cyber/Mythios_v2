@@ -326,4 +326,6 @@ class vulnerabilityDataCollector:
 
 if __name__ == "__main__":
     collector = vulnerabilityDataCollector()
-    train, val, test = collector.create_training_splits()
+    collector.download_nvd_feeds()
+    collector.process_nvd_feeds()
+    collector.create_training_splits()
