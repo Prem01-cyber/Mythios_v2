@@ -75,9 +75,7 @@ class MultiDatasetProcessor:
                     'source': 'D2A_function',
                     'id': sample.get('id', ''),
                     'label': sample.get('label', 0),
-                    'bug_url': sample.get('bug_url', ''),
-                    'bug_function': sample.get('bug_function', ''),
-                    'functions': str(sample.get('functions', '')),
+                    'code': sample.get('code', ''),
                 }
                 func_records.append(record)
             

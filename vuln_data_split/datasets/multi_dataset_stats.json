@@ -1,8 +1,8 @@
 {
-  "total_cves": 0,
+  "total_cves": 347792,
   "total_code_vulns": 36719,
   "total_residual_bugs": 5006,
-  "cwe_coverage": 0,
+  "cwe_coverage": 753,
   "code_pattern_types": 2,
   "residual_bug_types": 13
 }
