@@ -1,0 +1,110 @@
+name: searchsploit
+version: 4.3.0
+category: exploit_database
+description: "Command-line search tool for Exploit-DB database"
+
+capabilities:
+  - exploit_search
+  - vulnerability_research
+  - poc_discovery
+
+target_compatibility:
+  os: [all]
+  database: exploit_db
+
+commands:
+  basic_search:
+    template: "searchsploit {term}"
+    description: "Search exploit database"
+    output_format: text
+    estimated_time: 2
+  
+  case_sensitive:
+    template: "searchsploit -c {term}"
+    description: "Case-sensitive search"
+    output_format: text
+    estimated_time: 2
+  
+  exact_match:
+    template: "searchsploit -e {term}"
+    description: "Exact title match"
+    output_format: text
+    estimated_time: 1
+  
+  json_output:
+    template: "searchsploit --json {term}"
+    description: "Output in JSON format"
+    output_format: json
+    estimated_time: 2
+  
+  nmap_xml:
+    template: "searchsploit --nmap {nmap_xml}"
+    description: "Search based on nmap XML output"
+    output_format: text
+    estimated_time: 5
+  
+  examine_exploit:
+    template: "searchsploit -x {exploit_id}"
+    description: "Display exploit code"
+    output_format: text
+    estimated_time: 1
+  
+  update_db:
+    template: "searchsploit -u"
+    description: "Update exploit database"
+    output_format: text
+    estimated_time: 60
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+search_filters:
+  platform: "--platform {windows|linux|macos|web}"
+  type: "--type {local|remote|webapps|dos}"
+  exclude: "-e {term}"
+
+complementary_tools:
+  - metasploit    # Exploitation framework
+  - nmap          # Service detection before exploit search
+  - nuclei        # Template-based vulnerability detection
+
+known_issues:
+  - "Requires internet for database updates"
+  - "Some exploits are outdated"
+  - "Exploit code quality varies"
+  - "May not work on modern systems"
+
+success_indicators:
+  - "Exploit Title"
+  - "Path"
+  - "exploits found"
+
+failure_indicators:
+  - "Exploits: No Results"
+  - "Error:"
+
+installation:
+  apt: "apt-get install exploitdb"
+  github: "git clone https://github.com/offensive-security/exploitdb"
+  included_with: "Kali Linux"
+
+effectiveness_baseline:
+  finding_exploits: 0.85
+
+important_flags:
+  -c: "Case-sensitive search"
+  -e: "Exact match"
+  -t: "Search exploit title only"
+  -x: "Examine/display exploit"
+  -m: "Mirror/copy exploit to current directory"
+  -u: "Update database"
+  --json: "JSON output format"
+  --nmap: "Search based on nmap XML"
+  --exclude: "Exclude term from results"
+
+database_info:
+  location: "/usr/share/exploitdb"
+  size: "~50MB"
+  exploits: "50,000+"
+  update_frequency: "Daily"

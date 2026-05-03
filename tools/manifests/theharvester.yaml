@@ -1,0 +1,136 @@
+name: theharvester
+version: 4.5.0
+category: osint_reconnaissance
+description: "OSINT tool for gathering emails, subdomains, IPs, and URLs from public sources"
+
+capabilities:
+  - email_enumeration
+  - subdomain_discovery
+  - ip_enumeration
+  - url_discovery
+  - hostname_enumeration
+  - osint_gathering
+
+target_compatibility:
+  os: [all]
+  sources: [google, bing, linkedin, twitter, shodan, censys, virustotal, threatcrowd, crtsh]
+
+commands:
+  basic_search:
+    template: "theHarvester -d {domain} -b {source}"
+    description: "Basic search on single source"
+    output_format: text
+    estimated_time: 30
+  
+  all_sources:
+    template: "theHarvester -d {domain} -b all"
+    description: "Search all available sources"
+    output_format: text
+    estimated_time: 180
+  
+  json_output:
+    template: "theHarvester -d {domain} -b all -f {output_file}"
+    description: "Save results to JSON/XML/HTML"
+    output_format: json
+    estimated_time: 180
+  
+  shodan_search:
+    template: "theHarvester -d {domain} -b shodan"
+    description: "Search Shodan database"
+    output_format: text
+    estimated_time: 45
+  
+  limit_results:
+    template: "theHarvester -d {domain} -b {source} -l {limit}"
+    description: "Limit number of results"
+    output_format: text
+    estimated_time: 20
+
+output_format: text
+requires_auth: false  # Some sources require API keys
+requires_root: false
+
+data_sources:
+  passive:
+    - google
+    - bing
+    - yahoo
+    - duckduckgo
+    - linkedin
+    - twitter
+    - crtsh  # Certificate transparency
+    - virustotal
+    - threatcrowd
+    - dnsdumpster
+    - otx  # AlienVault OTX
+  active:
+    - shodan  # Requires API key
+    - censys  # Requires API key
+    - zoomeye  # Requires API key
+    - hunter  # Requires API key
+
+complementary_tools:
+  - amass          # Advanced subdomain enumeration
+  - subfinder      # Fast passive subdomain discovery
+  - shodan-cli     # Direct Shodan queries
+  - recon-ng       # Comprehensive recon framework
+
+known_issues:
+  - "Search engines may rate-limit/block"
+  - "Some sources require API keys"
+  - "Results vary by source"
+  - "May miss private/unlisted resources"
+
+success_indicators:
+  - "Found"
+  - "hosts"
+  - "emails"
+  - "IPs"
+
+failure_indicators:
+  - "Error"
+  - "No results"
+  - "API key"
+  - "Rate limit"
+
+installation:
+  pip: "pip install theHarvester"
+  apt: "apt-get install theharvester"
+  github: "git clone https://github.com/laramies/theHarvester"
+
+effectiveness_baseline:
+  email_discovery: 0.75
+  subdomain_discovery: 0.70
+  passive_recon: 0.80
+
+important_flags:
+  -d: "Domain to search"
+  -b: "Data source (or 'all')"
+  -l: "Limit results"
+  -f: "Output filename"
+  -v: "Verify hostnames via DNS"
+  -e: "Use specific DNS server"
+
+api_keys_needed:
+  shodan: "https://account.shodan.io"
+  censys: "https://censys.io/register"
+  hunter: "https://hunter.io/api"
+  zoomeye: "https://www.zoomeye.org"
+
+best_sources:
+  emails: ["google", "bing", "linkedin", "hunter"]
+  subdomains: ["crtsh", "virustotal", "threatcrowd", "dnsdumpster"]
+  ips: ["shodan", "censys", "zoomeye"]
+  general: ["google", "bing", "duckduckgo"]
+
+usage_workflow:
+  step1: "theHarvester -d target.com -b all (gather all data)"
+  step2: "theHarvester -d target.com -b shodan (IP/service info)"
+  step3: "Use discovered subdomains for further scanning"
+  step4: "Use discovered emails for phishing simulations"
+
+output_formats:
+  - text
+  - html
+  - xml
+  - json

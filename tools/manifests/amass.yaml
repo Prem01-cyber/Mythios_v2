@@ -1,0 +1,107 @@
+name: amass
+version: 4.2.0
+category: osint_reconnaissance
+description: "Advanced subdomain enumeration and attack surface mapping tool"
+
+capabilities:
+  - subdomain_enumeration
+  - dns_enumeration
+  - asn_discovery
+  - network_mapping
+  - passive_reconnaissance
+  - active_reconnaissance
+
+target_compatibility:
+  os: [all]
+  protocols: [dns, http, https]
+
+commands:
+  enum:
+    template: "amass enum -d {domain}"
+    description: "Basic subdomain enumeration"
+    output_format: text
+    estimated_time: 180
+  
+  passive:
+    template: "amass enum -passive -d {domain}"
+    description: "Passive enumeration only"
+    output_format: text
+    estimated_time: 60
+  
+  active:
+    template: "amass enum -active -d {domain}"
+    description: "Active enumeration with DNS queries"
+    output_format: text
+    estimated_time: 240
+  
+  json_output:
+    template: "amass enum -d {domain} -json {output_file}"
+    description: "Output in JSON format"
+    output_format: json
+    estimated_time: 180
+  
+  with_brute:
+    template: "amass enum -d {domain} -brute -w {wordlist}"
+    description: "Include brute force"
+    output_format: text
+    estimated_time: 300
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+data_sources:
+  - "AlienVault OTX"
+  - "BinaryEdge"
+  - "Censys"
+  - "Certificate Transparency logs"
+  - "CIRCL"
+  - "DNSlytics"
+  - "GitHub"
+  - "Hunter.io"
+  - "IPToASN"
+  - "PassiveTotal"
+  - "Shodan"
+  - "VirusTotal"
+  - "WhoisXML API"
+
+complementary_tools:
+  - subfinder       # Faster passive enumeration
+  - theharvester    # Email/hostname discovery
+  - dnsrecon        # DNS enumeration
+
+known_issues:
+  - "Can be slow for large domains"
+  - "Some sources require API keys"
+  - "Active mode may trigger IDS"
+  - "Resource intensive"
+
+success_indicators:
+  - "OWASP Amass"
+  - "ASN:"
+  - "Subdomain Name:"
+
+failure_indicators:
+  - "Error"
+  - "No names were discovered"
+
+installation:
+  go: "go install -v github.com/owasp-amass/amass/v4/...@master"
+  apt: "apt-get install amass"
+  brew: "brew install amass"
+  github: "https://github.com/owasp-amass/amass"
+
+effectiveness_baseline:
+  subdomain_discovery: 0.92
+  asn_mapping: 0.88
+
+important_flags:
+  -d: "Domain to enumerate"
+  -passive: "Passive mode only"
+  -active: "Enable active enumeration"
+  -brute: "Enable brute forcing"
+  -w: "Wordlist for brute force"
+  -o: "Output file"
+  -json: "JSON output"
+  -config: "Configuration file"
+  -timeout: "Enumeration timeout"

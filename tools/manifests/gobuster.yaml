@@ -1,0 +1,115 @@
+name: gobuster
+version: 3.6.0
+category: web_application
+description: "Fast directory/file & DNS busting tool written in Go"
+
+capabilities:
+  - directory_bruteforce
+  - dns_subdomain_enumeration
+  - vhost_discovery
+  - s3_bucket_enumeration
+
+target_compatibility:
+  os: [all]
+  protocols: [http, https, dns]
+
+commands:
+  dir_scan:
+    template: "gobuster dir -u {target} -w {wordlist}"
+    description: "Directory and file bruteforce"
+    output_format: text
+    estimated_time: 300
+  
+  dir_extensions:
+    template: "gobuster dir -u {target} -w {wordlist} -x {extensions}"
+    description: "Scan with specific file extensions"
+    output_format: text
+    estimated_time: 400
+    params:
+      extensions: "php,html,txt,zip"
+  
+  dns_subdomain:
+    template: "gobuster dns -d {domain} -w {wordlist}"
+    description: "DNS subdomain enumeration"
+    output_format: text
+    estimated_time: 180
+  
+  vhost_enum:
+    template: "gobuster vhost -u {target} -w {wordlist}"
+    description: "Virtual host enumeration"
+    output_format: text
+    estimated_time: 120
+  
+  s3_buckets:
+    template: "gobuster s3 -w {wordlist}"
+    description: "S3 bucket enumeration"
+    output_format: text
+    estimated_time: 90
+  
+  output_file:
+    template: "gobuster dir -u {target} -w {wordlist} -o {output_file}"
+    description: "Save results to file"
+    output_format: text
+    estimated_time: 300
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+scan_modes:
+  dir: "Directory/file enumeration"
+  dns: "DNS subdomain bruteforce"
+  vhost: "Virtual host bruteforce"
+  s3: "S3 bucket enumeration"
+
+common_wordlists:
+  - "/usr/share/wordlists/dirb/common.txt"
+  - "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+  - "/usr/share/seclists/Discovery/Web-Content/common.txt"
+  - "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"
+
+complementary_tools:
+  - dirb        # Alternative directory bruteforcer
+  - ffuf        # Faster, more features
+  - dirsearch   # Python-based alternative
+
+known_issues:
+  - "Can be noisy and easily detected"
+  - "May trigger rate limiting"
+  - "Large wordlists take significant time"
+
+success_indicators:
+  - "Status: 200"
+  - "Status: 301"
+  - "Status: 302"
+  - "Found:"
+
+failure_indicators:
+  - "Error:"
+  - "Unable to connect"
+  - "Too many requests"
+
+installation:
+  apt: "apt-get install gobuster"
+  go: "go install github.com/OJ/gobuster/v3@latest"
+  github: "https://github.com/OJ/gobuster"
+
+effectiveness_baseline:
+  directory_enum: 0.80
+  subdomain_enum: 0.75
+  vhost_enum: 0.70
+
+important_flags:
+  -u: "Target URL"
+  -w: "Wordlist path"
+  -t: "Number of concurrent threads (default 10)"
+  -x: "File extensions to search for"
+  -o: "Output file"
+  -q: "Quiet mode"
+  -s: "Positive status codes (default 200,204,301,302,307,401,403)"
+  --timeout: "HTTP timeout (default 10s)"
+
+performance_notes:
+  - "Faster than dirb but not as fast as ffuf"
+  - "Good balance of speed and features"
+  - "Written in Go - single binary, easy deployment"

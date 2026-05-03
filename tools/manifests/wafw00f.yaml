@@ -1,0 +1,75 @@
+name: wafw00f
+version: 2.2.0
+category: web_reconnaissance
+description: "Web Application Firewall detection tool"
+
+capabilities:
+  - waf_detection
+  - waf_fingerprinting
+  - security_control_identification
+
+target_compatibility:
+  os: [all]
+  protocols: [http, https]
+
+commands:
+  basic_scan:
+    template: "wafw00f {target}"
+    description: "Detect WAF"
+    output_format: text
+    estimated_time: 10
+  
+  list_wafs:
+    template: "wafw00f -l"
+    description: "List detectable WAFs"
+    output_format: text
+    estimated_time: 1
+  
+  verbose:
+    template: "wafw00f -v {target}"
+    description: "Verbose output"
+    output_format: text
+    estimated_time: 15
+  
+  output_file:
+    template: "wafw00f -o {output_file} {target}"
+    description: "Save results"
+    output_format: json
+    estimated_time: 10
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+detected_wafs:
+  - "Cloudflare"
+  - "Akamai"
+  - "AWS WAF"
+  - "Imperva"
+  - "F5 BIG-IP"
+  - "Barracuda"
+  - "Sucuri"
+  - "ModSecurity"
+  - "100+ others"
+
+complementary_tools:
+  - whatweb        # Technology detection
+  - nikto          # Web scanning
+
+known_issues:
+  - "May miss custom WAFs"
+  - "Some WAFs hide fingerprints"
+
+installation:
+  pip: "pip install wafw00f"
+  apt: "apt-get install wafw00f"
+  github: "https://github.com/EnableSecurity/wafw00f"
+
+effectiveness_baseline:
+  waf_detection: 0.85
+
+important_flags:
+  -l: "List WAFs"
+  -a: "Test all WAFs"
+  -v: "Verbose"
+  -o: "Output file"

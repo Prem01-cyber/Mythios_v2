@@ -1,0 +1,112 @@
+name: rustscan
+version: 2.1.1
+category: network_scanning
+description: "Extremely fast port scanner that pipes results to nmap for detailed analysis"
+
+capabilities:
+  - fast_port_scanning
+  - full_port_range
+  - nmap_integration
+
+target_compatibility:
+  os: [all]
+  protocols: [tcp, udp]
+
+commands:
+  fast_scan:
+    template: "rustscan -a {target}"
+    description: "Fast scan all ports"
+    output_format: text
+    estimated_time: 5
+  
+  with_nmap:
+    template: "rustscan -a {target} -- -sV -sC"
+    description: "Fast scan then detailed nmap"
+    output_format: text
+    estimated_time: 30
+  
+  range_scan:
+    template: "rustscan -a {target} -r {port_range}"
+    description: "Scan specific port range"
+    output_format: text
+    estimated_time: 3
+  
+  ulimit_high:
+    template: "rustscan -a {target} --ulimit 5000"
+    description: "Increase speed with higher ulimit"
+    output_format: text
+    estimated_time: 2
+  
+  batch_mode:
+    template: "rustscan -a {target} -b 4500"
+    description: "Batch size (parallelism)"
+    output_format: text
+    estimated_time: 3
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+speed_comparison:
+  rustscan_all_ports: "~3 seconds"
+  nmap_all_ports: "~16 minutes"
+  masscan_all_ports: "~5 seconds"
+
+advantages:
+  - "Fastest port scanner for single targets"
+  - "Automatically pipes to nmap for detailed scanning"
+  - "Adaptive timing based on network conditions"
+  - "Beautiful colored output"
+  - "Built in Rust (memory safe, fast)"
+
+complementary_tools:
+  - nmap         # Detailed scanning after port discovery
+  - masscan      # Better for large networks
+  - enum4linux-ng # Service enumeration after port discovery
+
+known_issues:
+  - "Can overwhelm network/firewall with default settings"
+  - "UDP scanning limited"
+  - "Not ideal for large network ranges (use masscan)"
+  - "Requires nmap installed for full functionality"
+
+success_indicators:
+  - "Open"
+  - "PORT"
+  - "Starting"
+
+failure_indicators:
+  - "Could not connect"
+  - "Error"
+  - "Timeout"
+
+installation:
+  cargo: "cargo install rustscan"
+  apt: "Not in official repos - download from GitHub"
+  brew: "brew install rustscan"
+  docker: "docker pull rustscan/rustscan"
+  github: "https://github.com/RustScan/RustScan"
+
+effectiveness_baseline:
+  single_target: 0.98
+  network_range: 0.75
+
+important_flags:
+  -a: "Address/host to scan"
+  -r: "Port range (e.g., 1-1000)"
+  -b: "Batch size (parallelism)"
+  --ulimit: "File descriptor limit"
+  --: "Pass arguments to nmap"
+  -t: "Timeout in milliseconds"
+  -g: "Greppable output"
+
+recommended_workflow:
+  step1: "rustscan -a target (find open ports)"
+  step2: "rustscan -a target -- -sV -sC (detailed scan)"
+  step3: "Use specific tools based on found services"
+
+performance_notes:
+  - "Default timeout: 1500ms"
+  - "Default batch size: 4500"
+  - "Can scan all 65535 ports in seconds"
+  - "Best used for initial reconnaissance"

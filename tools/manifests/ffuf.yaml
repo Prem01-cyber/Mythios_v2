@@ -1,0 +1,152 @@
+name: ffuf
+version: 2.1.0
+category: web_application
+description: "Fast web fuzzer written in Go - modern alternative to wfuzz/gobuster"
+
+capabilities:
+  - directory_fuzzing
+  - parameter_fuzzing
+  - vhost_discovery
+  - subdomain_enumeration
+  - api_endpoint_discovery
+  - header_fuzzing
+
+target_compatibility:
+  os: [all]
+  protocols: [http, https]
+
+commands:
+  directory_fuzz:
+    template: "ffuf -u {target}/FUZZ -w {wordlist}"
+    description: "Directory and file fuzzing"
+    output_format: text
+    estimated_time: 60
+  
+  extensions:
+    template: "ffuf -u {target}/FUZZ -w {wordlist} -e .php,.html,.txt,.zip"
+    description: "Fuzz with file extensions"
+    output_format: text
+    estimated_time: 90
+  
+  vhost_discovery:
+    template: "ffuf -u https://{target} -H 'Host: FUZZ.{domain}' -w {wordlist}"
+    description: "Virtual host discovery"
+    output_format: text
+    estimated_time: 45
+  
+  parameter_fuzz:
+    template: "ffuf -u {target}?FUZZ=value -w {wordlist}"
+    description: "GET parameter fuzzing"
+    output_format: text
+    estimated_time: 30
+  
+  post_data_fuzz:
+    template: "ffuf -u {target} -X POST -d 'FUZZ=value' -w {wordlist}"
+    description: "POST data fuzzing"
+    output_format: text
+    estimated_time: 40
+  
+  json_output:
+    template: "ffuf -u {target}/FUZZ -w {wordlist} -of json -o {output_file}"
+    description: "Output in JSON format"
+    output_format: json
+    estimated_time: 60
+  
+  recursive:
+    template: "ffuf -u {target}/FUZZ -w {wordlist} -recursion -recursion-depth 2"
+    description: "Recursive directory fuzzing"
+    output_format: text
+    estimated_time: 180
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+fuzz_keywords:
+  FUZZ: "Main fuzzing keyword"
+  FUZZFILE: "Filename from wordlist"
+  FUZZDIR: "Directory from wordlist"
+  FUZZPATH: "Full path from wordlist"
+
+filter_options:
+  -fc: "Filter by status code"
+  -fs: "Filter by response size"
+  -fw: "Filter by word count"
+  -fl: "Filter by line count"
+  -fr: "Filter by regex"
+  -ft: "Filter by response time"
+
+match_options:
+  -mc: "Match status code"
+  -ms: "Match response size"
+  -mw: "Match word count"
+  -ml: "Match line count"
+  -mr: "Match regex"
+
+complementary_tools:
+  - gobuster      # Alternative fuzzer
+  - wfuzz         # Another alternative
+  - burpsuite     # Manual testing
+  - nuclei        # Template-based scanning
+
+known_issues:
+  - "Can generate significant traffic"
+  - "May trigger WAF/rate limiting"
+  - "Filters need tuning for each target"
+  - "Large wordlists can take time"
+
+success_indicators:
+  - "Status: 200"
+  - "Status: 301"
+  - "Status: 302"
+  - "[Status:"
+
+failure_indicators:
+  - "Connection refused"
+  - "timeout"
+  - "No results"
+
+installation:
+  go: "go install github.com/ffuf/ffuf/v2@latest"
+  apt: "apt-get install ffuf"
+  brew: "brew install ffuf"
+  github: "https://github.com/ffuf/ffuf"
+
+effectiveness_baseline:
+  directory_enum: 0.88
+  vhost_discovery: 0.82
+  parameter_fuzzing: 0.75
+
+important_flags:
+  -u: "Target URL"
+  -w: "Wordlist path"
+  -t: "Threads (default 40)"
+  -c: "Colorize output"
+  -s: "Silent mode"
+  -o: "Output file"
+  -of: "Output format (json, csv, html)"
+  -mc: "Match status codes"
+  -fc: "Filter status codes"
+  -H: "Custom header"
+  -X: "HTTP method"
+  -d: "POST data"
+  -e: "File extensions"
+  -recursion: "Enable recursion"
+  -timeout: "HTTP timeout (default 10s)"
+
+performance_tips:
+  - "Default 40 threads is usually good"
+  - "Use -s for faster scanning without output"
+  - "Filter 404s with -fc 404"
+  - "Use -ac for auto-calibration"
+
+example_workflows:
+  basic_dir: "ffuf -u https://target.com/FUZZ -w wordlist.txt -fc 404"
+  with_extensions: "ffuf -u https://target.com/FUZZ -w wordlist.txt -e .php,.html -fc 404"
+  vhost: "ffuf -u https://target.com -H 'Host: FUZZ.target.com' -w subdomains.txt"
+  api_enum: "ffuf -u https://api.target.com/v1/FUZZ -w endpoints.txt -mc 200,301,302"
+
+advantages_over_competitors:
+  vs_gobuster: "More features, better filtering, faster"
+  vs_wfuzz: "Much faster, cleaner output, better maintained"
+  vs_dirsearch: "Faster, more flexible filtering"

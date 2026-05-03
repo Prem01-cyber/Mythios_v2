@@ -1,0 +1,110 @@
+name: trivy
+version: 0.48.0
+category: container_security
+description: "Comprehensive vulnerability scanner for containers, Kubernetes, IaC, and more"
+
+capabilities:
+  - container_scanning
+  - image_vulnerability_detection
+  - kubernetes_scanning
+  - iac_scanning
+  - secret_detection
+  - license_detection
+
+target_compatibility:
+  os: [all]
+  platforms: [docker, kubernetes, aws, azure, gcp]
+  formats: [dockerfile, kubernetes_yaml, terraform, cloudformation]
+
+commands:
+  scan_image:
+    template: "trivy image {image_name}"
+    description: "Scan Docker image for vulnerabilities"
+    output_format: text
+    estimated_time: 60
+  
+  scan_filesystem:
+    template: "trivy fs {path}"
+    description: "Scan filesystem for vulnerabilities"
+    output_format: text
+    estimated_time: 120
+  
+  scan_repo:
+    template: "trivy repo {repo_url}"
+    description: "Scan Git repository"
+    output_format: text
+    estimated_time: 90
+  
+  json_output:
+    template: "trivy image -f json -o {output_file} {image_name}"
+    description: "Scan with JSON output"
+    output_format: json
+    estimated_time: 60
+  
+  severity_filter:
+    template: "trivy image --severity {severity} {image_name}"
+    description: "Filter by severity level"
+    output_format: text
+    estimated_time: 45
+    params:
+      severity: "CRITICAL,HIGH"
+  
+  scan_k8s:
+    template: "trivy k8s --report summary cluster"
+    description: "Scan Kubernetes cluster"
+    output_format: text
+    estimated_time: 180
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+severity_levels:
+  - UNKNOWN
+  - LOW
+  - MEDIUM
+  - HIGH
+  - CRITICAL
+
+scan_types:
+  - os_packages
+  - language_packages
+  - config_files
+  - secrets
+  - licenses
+
+complementary_tools:
+  - docker-bench-security  # Docker configuration audit
+  - kube-hunter           # Kubernetes penetration testing
+
+known_issues:
+  - "Requires internet for vulnerability database"
+  - "First scan downloads database (slower)"
+  - "May miss custom or proprietary packages"
+
+success_indicators:
+  - "Total:"
+  - "vulnerabilities found"
+  - "Severity:"
+
+failure_indicators:
+  - "Error:"
+  - "Unable to"
+  - "Failed to"
+
+installation:
+  binary: "Download from GitHub releases"
+  brew: "brew install trivy"
+  apt: "Add aquasec repo then apt install trivy"
+  docker: "docker run aquasec/trivy"
+  github: "https://github.com/aquasecurity/trivy"
+
+effectiveness_baseline:
+  docker_images: 0.92
+  kubernetes: 0.88
+  iac_scanning: 0.85
+
+performance_notes:
+  - "Fast scanning with local database cache"
+  - "Supports offline mode after DB download"
+  - "Multi-language support (Go, Python, Java, Node, etc.)"

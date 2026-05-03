@@ -1,0 +1,139 @@
+name: impacket
+version: 0.11.0
+category: windows_exploitation
+description: "Collection of Python classes for working with network protocols (essential for Windows/AD attacks)"
+
+capabilities:
+  - smb_exploitation
+  - credential_dumping
+  - lateral_movement
+  - command_execution
+  - kerberos_attacks
+  - ntds_extraction
+
+target_compatibility:
+  os: [windows]
+  versions: [7, 8, 10, 11, server_2008, server_2012, server_2016, server_2019, server_2022]
+  protocols: [smb, smb2, smb3, ldap, kerberos, mssql, wmi]
+
+commands:
+  psexec:
+    template: "impacket-psexec {domain}/{username}:{password}@{target}"
+    description: "Execute commands via PSEXEC"
+    output_format: interactive
+    estimated_time: null
+  
+  smbexec:
+    template: "impacket-smbexec {domain}/{username}:{password}@{target}"
+    description: "Execute commands via SMB (stealthier than psexec)"
+    output_format: interactive
+    estimated_time: null
+  
+  wmiexec:
+    template: "impacket-wmiexec {domain}/{username}:{password}@{target}"
+    description: "Execute commands via WMI"
+    output_format: interactive
+    estimated_time: null
+  
+  secretsdump:
+    template: "impacket-secretsdump {domain}/{username}:{password}@{target}"
+    description: "Dump credentials from target"
+    output_format: text
+    estimated_time: 60
+  
+  ntlmrelayx:
+    template: "impacket-ntlmrelayx -t {target} -smb2support"
+    description: "NTLM relay attack"
+    output_format: text
+    estimated_time: null
+  
+  GetNPUsers:
+    template: "impacket-GetNPUsers {domain}/ -usersfile {userlist} -dc-ip {dc_ip}"
+    description: "ASREPRoast attack - get hashes for users with no pre-auth"
+    output_format: text
+    estimated_time: 30
+  
+  GetUserSPNs:
+    template: "impacket-GetUserSPNs {domain}/{username}:{password} -dc-ip {dc_ip} -request"
+    description: "Kerberoasting - request service tickets"
+    output_format: text
+    estimated_time: 45
+
+output_format: text
+requires_auth: true  # Most tools require credentials
+requires_root: false
+
+included_tools:
+  - psexec.py         # Remote command execution
+  - smbexec.py        # SMB-based command execution
+  - wmiexec.py        # WMI-based command execution
+  - secretsdump.py    # Credential dumping
+  - ntlmrelayx.py     # NTLM relay attacks
+  - GetNPUsers.py     # ASREPRoast
+  - GetUserSPNs.py    # Kerberoasting
+  - goldenPac.py      # MS14-068 exploit
+  - ticketer.py       # Create golden/silver tickets
+  - lookupsid.py      # SID lookup
+  - rpcdump.py        # RPC endpoint enumeration
+  - samrdump.py       # SAM database dumping
+  - smbclient.py      # SMB client
+  - smbserver.py      # SMB server
+  - reg.py            # Remote registry operations
+
+attack_types:
+  credential_access:
+    - secretsdump
+    - sam_dump
+    - lsass_dump
+  lateral_movement:
+    - psexec
+    - smbexec
+    - wmiexec
+  privilege_escalation:
+    - ASREPRoast
+    - Kerberoasting
+    - MS14-068
+
+complementary_tools:
+  - crackmapexec      # Enumeration before exploitation
+  - enum4linux-ng     # Initial SMB enumeration
+  - bloodhound        # AD attack path mapping
+  - hashcat           # Crack dumped hashes
+
+known_issues:
+  - "Requires valid credentials for most attacks"
+  - "Detected by modern EDR/AV"
+  - "May trigger alerts in monitored environments"
+  - "Some tools require NTLM hashes instead of passwords"
+
+success_indicators:
+  - "C:\\Windows\\system32>"
+  - "Dumping"
+  - "hash"
+  - "Impacket"
+  - "SUCCESS"
+
+failure_indicators:
+  - "STATUS_LOGON_FAILURE"
+  - "Access is denied"
+  - "Connection error"
+  - "Authentication failed"
+
+installation:
+  pip: "pip install impacket"
+  github: "git clone https://github.com/fortra/impacket"
+  apt: "apt-get install python3-impacket"
+
+effectiveness_baseline:
+  with_credentials: 0.90
+  ntlm_relay: 0.70
+  kerberoasting: 0.65
+  modern_edr: 0.35
+
+ethical_warning: "Impacket tools are powerful and can cause damage - only use on authorized systems"
+
+usage_notes:
+  - "psexec requires admin credentials"
+  - "secretsdump can extract NTLM hashes without cracking"
+  - "Use NTLM hashes with -hashes parameter"
+  - "Kerberoasting works with low-privilege accounts"

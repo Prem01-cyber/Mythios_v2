@@ -1,0 +1,150 @@
+name: hashcat
+version: 6.2.6
+category: password_cracking
+description: "World's fastest GPU-based password cracking tool"
+
+capabilities:
+  - gpu_password_cracking
+  - hash_cracking
+  - dictionary_attack
+  - brute_force
+  - rule_based_attacks
+  - mask_attacks
+  - hybrid_attacks
+
+target_compatibility:
+  os: [windows, linux, macos]
+  hash_types: [md5, sha1, sha256, sha512, ntlm, bcrypt, scrypt, argon2, over_350_types]
+
+commands:
+  dictionary_attack:
+    template: "hashcat -m {hash_mode} {hash_file} {wordlist}"
+    description: "Dictionary attack"
+    output_format: text
+    estimated_time: null
+  
+  with_rules:
+    template: "hashcat -m {hash_mode} {hash_file} {wordlist} -r {rule_file}"
+    description: "Dictionary with rules"
+    output_format: text
+    estimated_time: null
+  
+  brute_force:
+    template: "hashcat -m {hash_mode} {hash_file} -a 3 {mask}"
+    description: "Brute force with mask"
+    output_format: text
+    estimated_time: null
+  
+  show_cracked:
+    template: "hashcat -m {hash_mode} {hash_file} --show"
+    description: "Show cracked passwords"
+    output_format: text
+    estimated_time: 1
+  
+  benchmark:
+    template: "hashcat -b"
+    description: "Benchmark hash types on hardware"
+    output_format: text
+    estimated_time: 60
+  
+  ntlm_attack:
+    template: "hashcat -m 1000 {ntlm_hashes} {wordlist}"
+    description: "Crack NTLM hashes"
+    output_format: text
+    estimated_time: null
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+hash_modes:
+  0: "MD5"
+  100: "SHA1"
+  1000: "NTLM"
+  1400: "SHA2-256"
+  1700: "SHA2-512"
+  1800: "sha512crypt (Linux)"
+  3000: "LM"
+  3200: "bcrypt"
+  5600: "NetNTLMv2"
+  9600: "MS Office 2013"
+  13100: "Kerberos 5 TGS-REP"
+  16800: "WPA-PMKID-PBKDF2"
+  22000: "WPA-PBKDF2-PMKID+EAPOL"
+
+attack_modes:
+  0: "Straight (dictionary)"
+  1: "Combination"
+  3: "Brute-force (mask)"
+  6: "Hybrid Wordlist + Mask"
+  7: "Hybrid Mask + Wordlist"
+  9: "Association"
+
+mask_charsets:
+  "?l": "lowercase (abcdefghijklmnopqrstuvwxyz)"
+  "?u": "uppercase (ABCDEFGHIJKLMNOPQRSTUVWXYZ)"
+  "?d": "digits (0123456789)"
+  "?h": "hex lowercase (0123456789abcdef)"
+  "?H": "hex uppercase (0123456789ABCDEF)"
+  "?s": "special characters"
+  "?a": "all printable ASCII"
+  "?b": "all (0x00-0xff)"
+
+complementary_tools:
+  - john           # CPU-based alternative
+  - hydra          # Online brute force
+  - impacket       # Dump hashes from Windows
+
+known_issues:
+  - "Requires GPU for good performance"
+  - "Complex command-line syntax"
+  - "Some hash types very slow even on GPU"
+  - "Requires drivers (NVIDIA CUDA, AMD OpenCL)"
+
+success_indicators:
+  - "Cracked"
+  - "Status.......: Cracked"
+  - "Recovered....:"
+
+failure_indicators:
+  - "Exhausted"
+  - "No devices found"
+  - "No hashes loaded"
+
+installation:
+  apt: "apt-get install hashcat"
+  brew: "brew install hashcat"
+  github: "https://github.com/hashcat/hashcat"
+  binary: "Download from hashcat.net"
+
+effectiveness_baseline:
+  ntlm_weak: 0.95
+  ntlm_medium: 0.60
+  bcrypt: 0.25
+  argon2: 0.10
+
+important_flags:
+  -m: "Hash type"
+  -a: "Attack mode"
+  -r: "Rules file"
+  -o: "Output file for cracked passwords"
+  --show: "Show cracked passwords"
+  -w: "Workload profile (1-4)"
+  --force: "Force run (ignore warnings)"
+  --session: "Session name"
+  --restore: "Restore session"
+  --status: "Show status"
+
+mask_examples:
+  8_lowercase: "?l?l?l?l?l?l?l?l"
+  8_alphanumeric: "?1?1?1?1?1?1?1?1 -1 ?l?u?d"
+  password_year: "?l?l?l?l?l?l?l?l?d?d?d?d"
+  complex_8: "?u?l?l?l?l?l?d?s"
+
+performance_notes:
+  - "RTX 3090: ~100 GH/s for MD5"
+  - "RTX 3090: ~60 GH/s for NTLM"  
+  - "RTX 3090: ~1 KH/s for bcrypt"
+  - "CPU only: 100-1000x slower"
+
+ethical_warning: "Only crack hashes you own or have permission to crack"

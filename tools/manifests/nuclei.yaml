@@ -1,0 +1,137 @@
+name: nuclei
+version: 3.1.0
+category: web_application
+description: "Fast and customizable vulnerability scanner based on YAML templates"
+
+capabilities:
+  - vulnerability_scanning
+  - template_based_scanning
+  - cve_detection
+  - misconfiguration_detection
+  - exposed_panels
+  - technology_detection
+
+target_compatibility:
+  os: [all]
+  protocols: [http, https, dns, tcp, ssl]
+  services: [web_server, api, dns_server]
+
+commands:
+  basic_scan:
+    template: "nuclei -u {target}"
+    description: "Basic scan with all templates"
+    output_format: text
+    estimated_time: 120
+  
+  severity_scan:
+    template: "nuclei -u {target} -severity {severity}"
+    description: "Scan for specific severity levels"
+    output_format: text
+    estimated_time: 60
+    params:
+      severity: "critical,high"
+  
+  tag_based:
+    template: "nuclei -u {target} -tags {tags}"
+    description: "Scan using specific tags"
+    output_format: text
+    estimated_time: 45
+    params:
+      tags: "cve,exposed-panels,misconfig"
+  
+  json_output:
+    template: "nuclei -u {target} -json -o {output_file}"
+    description: "Output results in JSON format"
+    output_format: json
+    estimated_time: 120
+  
+  list_scan:
+    template: "nuclei -l {target_list} -o {output_file}"
+    description: "Scan multiple targets from list"
+    output_format: text
+    estimated_time: 300
+  
+  rate_limited:
+    template: "nuclei -u {target} -rate-limit {rate}"
+    description: "Scan with rate limiting"
+    output_format: text
+    estimated_time: 180
+    params:
+      rate: "150"  # requests per second
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+severity_levels:
+  - info
+  - low
+  - medium
+  - high
+  - critical
+
+common_tags:
+  - cve
+  - exposed-panels
+  - misconfig
+  - xss
+  - sqli
+  - rce
+  - lfi
+  - ssrf
+  - idor
+  - auth-bypass
+
+ports_required:
+  - 80
+  - 443
+  - 8080
+  - 8443
+
+complementary_tools:
+  - nmap       # Port discovery before nuclei
+  - nikto      # Additional web server checks
+  - httpx      # Web service probing
+
+advantages_over_nikto:
+  - "10x faster with concurrent scanning"
+  - "Active community with daily template updates"
+  - "Better organized by CVE, CWE, severity"
+  - "Less noisy, more accurate results"
+
+known_issues:
+  - "Requires template updates for latest CVEs"
+  - "Some templates may have false positives"
+  - "High rate limits can trigger WAF/IDS"
+
+success_indicators:
+  - "[critical]"
+  - "[high]"
+  - "[cve-"
+  - "[exposure]"
+
+failure_indicators:
+  - "Could not connect"
+  - "dial tcp"
+  - "no such host"
+
+installation:
+  go: "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest"
+  brew: "brew install nuclei"
+  github: "https://github.com/projectdiscovery/nuclei"
+  binary: "Download from releases page"
+
+template_update:
+  command: "nuclei -update-templates"
+  frequency: "daily"
+  
+effectiveness_baseline:
+  web_applications: 0.85
+  exposed_services: 0.92
+  cve_detection: 0.88
+  api_endpoints: 0.75
+
+performance_notes:
+  - "Concurrent scanning makes it faster than nikto"
+  - "Template-based approach reduces false positives"
+  - "Active template repository with 5000+ templates"

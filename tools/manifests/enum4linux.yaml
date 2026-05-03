@@ -1,0 +1,81 @@
+name: enum4linux
+version: 0.9.1
+category: windows_enumeration
+description: "Legacy SMB enumeration tool for older Windows systems"
+
+capabilities:
+  - smb_enumeration
+  - user_enumeration
+  - share_discovery
+  - group_enumeration
+  - password_policy
+
+target_compatibility:
+  os: [windows]
+  versions: [xp, 2003, vista, 7]
+  protocols: [smb1]
+
+commands:
+  full_enumeration:
+    template: "enum4linux -a {target}"
+    description: "Full enumeration (all options)"
+    output_format: text
+    estimated_time: 30
+  
+  users_only:
+    template: "enum4linux -U {target}"
+    description: "Enumerate users only"
+    output_format: text
+    estimated_time: 10
+  
+  shares_only:
+    template: "enum4linux -S {target}"
+    description: "Enumerate shares only"
+    output_format: text
+    estimated_time: 5
+  
+  verbose:
+    template: "enum4linux -v -a {target}"
+    description: "Verbose full enumeration"
+    output_format: text
+    estimated_time: 35
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+ports_required:
+  - 139
+  - 445
+
+superseded_by:
+  - enum4linux-ng  # Use this for modern Windows
+
+known_issues:
+  - "Does not support SMBv2/v3"
+  - "Fails on Windows 10+ due to SMBv1 being disabled"
+  - "Slow on large domains"
+  - "Limited output formatting options"
+
+success_indicators:
+  - "Got domain/workgroup name"
+  - "User accounts"
+  - "Share Enumeration"
+
+failure_indicators:
+  - "Cannot connect"
+  - "Protocol negotiation failed"
+  - "Connection timed out"
+
+installation:
+  apt: "apt-get install enum4linux"
+  manual: "git clone https://github.com/CiscoCXSecurity/enum4linux"
+
+effectiveness_baseline:
+  windows_xp: 0.92
+  windows_2003: 0.88
+  windows_7: 0.75
+  windows_10: 0.08
+  windows_11: 0.00
+
+deprecation_warning: "Prefer enum4linux-ng for Windows 7+ environments"

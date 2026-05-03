@@ -1,0 +1,114 @@
+name: nikto
+version: 2.5.0
+category: web_application
+description: "Web server scanner for vulnerabilities, misconfigurations, and outdated software"
+
+capabilities:
+  - web_scanning
+  - vulnerability_detection
+  - misconfiguration_detection
+  - outdated_software_detection
+  - ssl_testing
+
+target_compatibility:
+  os: [all]
+  protocols: [http, https]
+  services: [web_server]
+
+commands:
+  basic_scan:
+    template: "nikto -h {target}"
+    description: "Basic web server scan"
+    output_format: text
+    estimated_time: 300
+  
+  ssl_scan:
+    template: "nikto -h {target} -ssl"
+    description: "Scan HTTPS server"
+    output_format: text
+    estimated_time: 320
+  
+  tuning_scan:
+    template: "nikto -h {target} -Tuning {tuning}"
+    description: "Focused scan with tuning options"
+    output_format: text
+    estimated_time: 180
+    params:
+      tuning: "1,2,3,4,5,6,7,8,9,a,b,c"  # All tests
+  
+  output_formats:
+    template: "nikto -h {target} -o {output_file} -Format {format}"
+    description: "Scan with specific output format"
+    output_format: multiple
+    formats: [txt, csv, xml, htm, json]
+    estimated_time: 300
+  
+  no_ssl_check:
+    template: "nikto -h {target} -nossl"
+    description: "Disable SSL certificate verification"
+    output_format: text
+    estimated_time: 280
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+ports_required:
+  - 80   # HTTP
+  - 443  # HTTPS
+  - 8080 # Alt HTTP
+  - 8443 # Alt HTTPS
+
+tuning_options:
+  "1": "Interesting File / Seen in logs"
+  "2": "Misconfiguration / Default File"
+  "3": "Information Disclosure"
+  "4": "Injection (XSS/Script/HTML)"
+  "5": "Remote File Retrieval - Inside Web Root"
+  "6": "Denial of Service"
+  "7": "Remote File Retrieval - Server Wide"
+  "8": "Command Execution / Remote Shell"
+  "9": "SQL Injection"
+  "a": "Authentication Bypass"
+  "b": "Software Identification"
+  "c": "Remote Source Inclusion"
+
+complementary_tools:
+  - nuclei      # Faster, template-based scanning
+  - burpsuite   # Manual testing and proxy
+  - sqlmap      # Dedicated SQL injection testing
+
+known_issues:
+  - "Can be slow on large applications"
+  - "May generate many false positives"
+  - "Noisy - easily detected by WAF/IDS"
+  - "No JavaScript execution (misses SPA vulnerabilities)"
+
+success_indicators:
+  - "+ OSVDB-"
+  - "+ Server:"
+  - "+ Target IP:"
+  - "vulnerabilities found"
+
+failure_indicators:
+  - "ERROR"
+  - "Could not connect"
+  - "No web server found"
+  - "Connection refused"
+
+installation:
+  apt: "apt-get install nikto"
+  brew: "brew install nikto"
+  github: "https://github.com/sullo/nikto"
+
+effectiveness_baseline:
+  apache: 0.78
+  nginx: 0.72
+  iis: 0.75
+  tomcat: 0.80
+  modern_spa: 0.45
+
+scan_duration_estimate:
+  small_site: "3-5 minutes"
+  medium_site: "10-15 minutes"
+  large_site: "30+ minutes"

@@ -1,0 +1,102 @@
+name: wireshark
+version: 4.2.0
+category: traffic_analysis
+description: "Network protocol analyzer for capturing and analyzing network traffic"
+
+capabilities:
+  - packet_capture
+  - protocol_analysis
+  - traffic_inspection
+  - network_forensics
+  - protocol_decoding
+
+target_compatibility:
+  os: [windows, linux, macos]
+  protocols: [all]
+
+commands:
+  capture_interface:
+    template: "tshark -i {interface} -w {output_file}"
+    description: "Capture traffic on interface"
+    output_format: pcap
+    estimated_time: null
+  
+  read_pcap:
+    template: "tshark -r {pcap_file}"
+    description: "Read and display pcap file"
+    output_format: text
+    estimated_time: 5
+  
+  filter_display:
+    template: "tshark -r {pcap_file} -Y '{display_filter}'"
+    description: "Apply display filter to pcap"
+    output_format: text
+    estimated_time: 10
+  
+  http_extraction:
+    template: "tshark -r {pcap_file} -Y 'http.request' -T fields -e http.host -e http.request.uri"
+    description: "Extract HTTP requests"
+    output_format: text
+    estimated_time: 15
+  
+  statistics:
+    template: "tshark -r {pcap_file} -q -z conv,tcp"
+    description: "Generate traffic statistics"
+    output_format: text
+    estimated_time: 20
+
+output_format: pcap
+requires_auth: false
+requires_root: true  # For packet capture
+
+cli_tool: tshark  # Command-line version
+
+common_filters:
+  http: "http"
+  https: "tls or ssl"
+  dns: "dns"
+  smb: "smb or smb2"
+  ftp: "ftp or ftp-data"
+  ssh: "ssh"
+  telnet: "telnet"
+  icmp: "icmp"
+
+complementary_tools:
+  - tcpdump      # Alternative capture tool
+  - nmap         # Port scanning
+  - ettercap     # MitM attacks
+
+known_issues:
+  - "Requires root for packet capture"
+  - "Large captures consume significant disk space"
+  - "Complex filtering syntax"
+  - "GUI may not be available on servers"
+
+success_indicators:
+  - "Capturing on"
+  - "packets captured"
+  - "File:"
+
+failure_indicators:
+  - "Permission denied"
+  - "No such device"
+  - "Capture error"
+
+installation:
+  apt: "apt-get install wireshark tshark"
+  brew: "brew install wireshark"
+  yum: "yum install wireshark"
+  
+effectiveness_baseline:
+  traffic_analysis: 0.95
+  protocol_forensics: 0.92
+
+important_flags:
+  -i: "Interface to capture"
+  -w: "Write to file"
+  -r: "Read from file"
+  -Y: "Display filter"
+  -f: "Capture filter (BPF syntax)"
+  -c: "Capture count (number of packets)"
+  -a: "Autostop condition"
+  -q: "Quiet mode (for statistics)"

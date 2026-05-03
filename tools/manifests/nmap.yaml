@@ -1,0 +1,80 @@
+name: nmap
+version: 7.94
+category: network_scanning
+description: "Network exploration and security auditing tool"
+
+capabilities:
+  - port_scanning
+  - service_detection
+  - os_detection
+  - vulnerability_scanning
+  - script_scanning
+
+target_compatibility:
+  os: [all]
+  protocols: [tcp, udp, icmp, sctp]
+
+commands:
+  basic_scan:
+    template: "nmap {target}"
+    description: "Basic TCP SYN scan of top 1000 ports"
+    output_format: text
+    estimated_time: 10
+  
+  service_version:
+    template: "nmap -sV {target}"
+    description: "Service version detection"
+    output_format: text
+    estimated_time: 30
+  
+  os_detection:
+    template: "nmap -O {target}"
+    description: "Operating system detection"
+    output_format: text
+    estimated_time: 20
+    requires_root: true
+  
+  full_scan:
+    template: "nmap -sV -sC -O -A -oN {output_file} {target}"
+    description: "Aggressive scan with scripts, version, and OS detection"
+    output_format: text
+    estimated_time: 120
+    requires_root: true
+  
+  json_output:
+    template: "nmap -sV -sC -oX {output_file} {target}"
+    description: "Scan with XML output (convertible to JSON)"
+    output_format: xml
+    estimated_time: 60
+  
+  quick_discovery:
+    template: "nmap -sn {target}"
+    description: "Host discovery only (no port scan)"
+    output_format: text
+    estimated_time: 5
+
+output_format: text
+requires_auth: false
+requires_root: false  # Some features require root
+
+ports_required: []  # Can scan any ports
+
+success_indicators:
+  - "Host is up"
+  - "open ports found"
+  - "Service Info:"
+  - "OS details:"
+
+failure_indicators:
+  - "Host seems down"
+  - "All scanned ports on"
+  - "filtered"
+  - "No route to host"
+
+installation:
+  apt: "apt-get install nmap"
+  yum: "yum install nmap"
+  brew: "brew install nmap"
+
+effectiveness_baseline:
+  all_targets: 0.98  # Nearly always works

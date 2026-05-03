@@ -1,0 +1,88 @@
+name: crackmapexec
+version: 5.4.0
+category: windows_enumeration
+description: "Swiss army knife for pentesting Windows/Active Directory environments"
+
+capabilities:
+  - smb_enumeration
+  - winrm_enumeration
+  - credential_validation
+  - share_enumeration
+  - command_execution
+  - password_spraying
+
+target_compatibility:
+  os: [windows]
+  versions: [7, 8, 10, 11, server_2008, server_2012, server_2016, server_2019, server_2022]
+  protocols: [smb, winrm, ssh, mssql, ldap]
+
+commands:
+  smb_null_session:
+    template: "crackmapexec smb {target} -u '' -p '' --shares"
+    description: "Test for SMB null session and list shares"
+    output_format: text
+    estimated_time: 10
+  
+  smb_enum_shares:
+    template: "crackmapexec smb {target} --shares"
+    description: "Enumerate SMB shares"
+    output_format: text
+    estimated_time: 5
+  
+  smb_enum_users:
+    template: "crackmapexec smb {target} --users"
+    description: "Enumerate domain users"
+    output_format: text
+    estimated_time: 15
+  
+  smb_enum_groups:
+    template: "crackmapexec smb {target} --groups"
+    description: "Enumerate domain groups"
+    output_format: text
+    estimated_time: 15
+  
+  winrm_check:
+    template: "crackmapexec winrm {target}"
+    description: "Check if WinRM is accessible"
+    output_format: text
+    estimated_time: 5
+
+output_format: text
+requires_auth: false  # Some commands work without auth
+requires_root: false
+
+ports_required:
+  - 445   # SMB
+  - 5985  # WinRM HTTP
+  - 5986  # WinRM HTTPS
+
+complementary_tools:
+  - enum4linux-ng  # Use CME after enum4linux-ng for deeper access
+  - impacket       # Similar capabilities, different approach
+
+known_issues:
+  - "May be detected by EDR systems"
+  - "Loud on the network"
+  - "Can trigger account lockouts with password spraying"
+
+success_indicators:
+  - "SMB"
+  - "shares"
+  - "users"
+  - "Pwn3d!"  # Successful credential validation
+
+failure_indicators:
+  - "Connection error"
+  - "STATUS_LOGON_FAILURE"
+  - "Connection refused"
+
+installation:
+  apt: "apt-get install crackmapexec"
+  pip: "pip install crackmapexec"
+  github: "https://github.com/byt3bl33d3r/CrackMapExec"
+
+effectiveness_baseline:
+  windows_10: 0.65
+  windows_11: 0.62
+  windows_server_2019: 0.70
+  windows_server_2022: 0.68

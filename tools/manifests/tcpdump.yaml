@@ -1,0 +1,67 @@
+name: tcpdump
+version: 4.99.4
+category: traffic_analysis
+description: "Lightweight command-line packet analyzer"
+
+capabilities:
+  - packet_capture
+  - traffic_analysis
+  - protocol_filtering
+  - network_forensics
+
+target_compatibility:
+  os: [linux, macos, unix]
+  protocols: [all]
+
+commands:
+  capture_interface:
+    template: "tcpdump -i {interface} -w {output_file}"
+    description: "Capture on interface"
+    output_format: pcap
+    estimated_time: null
+  
+  read_pcap:
+    template: "tcpdump -r {pcap_file}"
+    description: "Read pcap file"
+    output_format: text
+    estimated_time: 5
+  
+  filter_port:
+    template: "tcpdump -i {interface} port {port}"
+    description: "Capture specific port"
+    output_format: pcap
+    estimated_time: null
+  
+  ascii_output:
+    template: "tcpdump -i {interface} -A"
+    description: "Show packet contents in ASCII"
+    output_format: text
+    estimated_time: null
+
+output_format: pcap
+requires_auth: false
+requires_root: true
+
+complementary_tools:
+  - wireshark      # GUI analysis
+  - tshark         # Wireshark CLI
+
+known_issues:
+  - "Requires root for capture"
+  - "No GUI"
+  - "Complex BPF filters"
+
+installation:
+  apt: "apt-get install tcpdump"
+  brew: "brew install tcpdump"
+
+effectiveness_baseline:
+  packet_capture: 0.98
+
+important_flags:
+  -i: "Interface"
+  -w: "Write to file"
+  -r: "Read from file"
+  -A: "ASCII output"
+  -n: "No DNS resolution"
+  -c: "Capture count"

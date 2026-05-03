@@ -1,0 +1,120 @@
+name: whatweb
+version: 0.5.5
+category: web_reconnaissance
+description: "Next generation web scanner for identifying web technologies"
+
+capabilities:
+  - technology_detection
+  - cms_identification
+  - server_identification
+  - plugin_detection
+  - version_fingerprinting
+
+target_compatibility:
+  os: [all]
+  protocols: [http, https]
+
+commands:
+  basic_scan:
+    template: "whatweb {target}"
+    description: "Basic technology detection"
+    output_format: text
+    estimated_time: 5
+  
+  verbose:
+    template: "whatweb -v {target}"
+    description: "Verbose output with all details"
+    output_format: text
+    estimated_time: 8
+  
+  aggressive:
+    template: "whatweb -a 3 {target}"
+    description: "Aggressive scanning (level 3)"
+    output_format: text
+    estimated_time: 15
+  
+  json_output:
+    template: "whatweb --log-json={output_file} {target}"
+    description: "Output in JSON format"
+    output_format: json
+    estimated_time: 5
+  
+  url_list:
+    template: "whatweb -i {url_list}"
+    description: "Scan multiple URLs from file"
+    output_format: text
+    estimated_time: 60
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+aggression_levels:
+  1: "Stealthy - Makes one request per target"
+  2: "Unused"
+  3: "Aggressive - Follows redirects, tests all plugins"
+  4: "Heavy - Makes many requests per target"
+
+detected_technologies:
+  - cms: "WordPress, Drupal, Joomla, etc."
+  - servers: "Apache, Nginx, IIS, etc."
+  - frameworks: "Laravel, Django, Rails, etc."
+  - javascript: "jQuery, React, Angular, etc."
+  - analytics: "Google Analytics, etc."
+  - cdn: "Cloudflare, Akamai, etc."
+
+complementary_tools:
+  - wappalyzer    # Browser extension for tech detection
+  - nikto         # Web vulnerability scanner
+  - nuclei        # CVE-based scanning
+
+known_issues:
+  - "May miss some technologies"
+  - "Aggressive modes can be noisy"
+  - "Limited JavaScript execution"
+  - "May trigger WAF"
+
+success_indicators:
+  - "detected"
+  - "Version"
+  - "Plugin"
+  - "Title"
+
+failure_indicators:
+  - "ERROR"
+  - "Connection refused"
+  - "Timed out"
+
+installation:
+  apt: "apt-get install whatweb"
+  gem: "gem install whatweb"
+  github: "https://github.com/urbanadventurer/WhatWeb"
+
+effectiveness_baseline:
+  static_sites: 0.85
+  modern_spas: 0.60
+  obfuscated: 0.40
+
+important_flags:
+  -a: "Aggression level (1-4)"
+  -v: "Verbose output"
+  -i: "Input file with URLs"
+  --log-json: "JSON output"
+  --log-xml: "XML output"
+  -U: "Custom User-Agent"
+  --max-threads: "Maximum threads"
+
+plugins:
+  total: "1800+"
+  categories:
+    - cms
+    - javascript_libraries
+    - web_frameworks
+    - servers
+    - analytics
+    - advertising
+
+usage_recommendation:
+  - "Run before vulnerability scanning"
+  - "Helps select appropriate tools"
+  - "Identifies potential attack surface"

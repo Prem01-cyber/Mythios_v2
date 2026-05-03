@@ -1,0 +1,141 @@
+name: burpsuite
+version: 2023.11
+category: web_application
+description: "Comprehensive web application security testing platform with intercepting proxy"
+
+capabilities:
+  - proxy_interception
+  - web_scanning
+  - request_manipulation
+  - session_handling
+  - authentication_testing
+  - intruder_attacks
+  - api_testing
+
+target_compatibility:
+  os: [windows, linux, macos]
+  protocols: [http, https, websocket]
+
+commands:
+  cli_scan:
+    template: "burpsuite --project-file={project} --config-file={config}"
+    description: "Launch with project and config (Professional only)"
+    output_format: text
+    estimated_time: null
+  
+  headless_scan:
+    template: "burpsuite --project-file={project} --unpause-spider-and-scanner"
+    description: "Headless scanning (Professional only)"
+    output_format: text
+    estimated_time: null
+
+output_format: gui
+requires_auth: false
+requires_root: false
+
+editions:
+  community:
+    price: "Free"
+    features:
+      - "Intercepting proxy"
+      - "Manual testing tools"
+      - "Repeater"
+      - "Sequencer"
+      - "Decoder"
+      - "Comparer"
+    limitations:
+      - "No active scanner"
+      - "No intruder (throttled)"
+      - "No saved projects"
+      - "No extensions (limited)"
+  
+  professional:
+    price: "$449/year"
+    features:
+      - "Everything in Community"
+      - "Active vulnerability scanner"
+      - "Full-speed Intruder"
+      - "Save/restore projects"
+      - "Advanced scanning"
+      - "Collaboration features"
+      - "CI/CD integration"
+
+key_tools:
+  proxy: "Intercept and modify HTTP/HTTPS requests"
+  scanner: "Automated vulnerability scanning (Pro only)"
+  repeater: "Manual request replay and modification"
+  intruder: "Automated custom attacks (throttled in Community)"
+  sequencer: "Analyze randomness of session tokens"
+  decoder: "Encode/decode data"
+  comparer: "Compare site responses"
+  extender: "Install extensions (BApps)"
+
+complementary_tools:
+  - nikto          # Quick web server scan
+  - nuclei         # Template-based vulnerabilities
+  - sqlmap         # SQL injection
+  - ffuf           # Web fuzzing
+
+known_issues:
+  - "Community edition lacks scanner"
+  - "Resource intensive (requires 4GB+ RAM)"
+  - "GUI-based (not ideal for automation)"
+  - "Requires Java Runtime"
+  - "Community intruder is throttled"
+
+success_indicators:
+  - "Proxy running"
+  - "Request intercepted"
+  - "Scan completed"
+
+failure_indicators:
+  - "Java error"
+  - "Connection failed"
+  - "Certificate error"
+
+installation:
+  download: "https://portswigger.net/burp/releases"
+  java: "Requires Java 17+"
+  apt: "Not in official repos"
+  included_with: "Kali Linux"
+
+effectiveness_baseline:
+  manual_testing: 0.95
+  automated_scanning: 0.80  # Pro only
+  api_testing: 0.85
+
+typical_workflow:
+  step1: "Configure browser to use Burp proxy (127.0.0.1:8080)"
+  step2: "Install Burp CA certificate"
+  step3: "Browse target application"
+  step4: "Analyze intercepted requests"
+  step5: "Send interesting requests to Repeater"
+  step6: "Test for vulnerabilities manually"
+  step7: "Use Intruder for parameter fuzzing"
+
+common_extensions:
+  - "Autorize - Authorization testing"
+  - "J2EEScan - J2EE vulnerability scanner"
+  - "Retire.js - Find vulnerable JavaScript libraries"
+  - "Active Scan++ - Additional checks"
+  - "Param Miner - Find hidden parameters"
+  - "Turbo Intruder - Fast Intruder alternative"
+
+proxy_configuration:
+  default_port: "8080"
+  ssl_passthrough: "*.google.com, *.apple.com"
+  upstream_proxy: "Optional corporate proxy"
+
+api_features:
+  - "REST API testing"
+  - "GraphQL support"
+  - "WebSocket testing"
+  - "JSON/XML manipulation"
+
+community_vs_pro:
+  scanner: "Pro only - major limitation"
+  intruder: "Throttled in Community"
+  projects: "Pro can save, Community cannot"
+  automation: "Pro has better CLI/API"
+  
+recommendation: "Start with Community for manual testing, upgrade to Pro for automation and scanning"

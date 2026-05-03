@@ -1,0 +1,129 @@
+name: sqlmap
+version: 1.7.11
+category: web_application
+description: "Automatic SQL injection and database takeover tool"
+
+capabilities:
+  - sql_injection
+  - database_enumeration
+  - database_takeover
+  - file_system_access
+  - command_execution
+
+target_compatibility:
+  os: [all]
+  protocols: [http, https]
+  databases: [mysql, postgresql, mssql, oracle, sqlite, access, db2]
+
+commands:
+  basic_test:
+    template: "sqlmap -u {target} --batch"
+    description: "Basic SQL injection test"
+    output_format: text
+    estimated_time: 180
+  
+  with_data:
+    template: "sqlmap -u {target} --data='{post_data}' --batch"
+    description: "Test POST request with data"
+    output_format: text
+    estimated_time: 200
+  
+  enumerate_dbs:
+    template: "sqlmap -u {target} --dbs --batch"
+    description: "Enumerate available databases"
+    output_format: text
+    estimated_time: 120
+  
+  enumerate_tables:
+    template: "sqlmap -u {target} -D {database} --tables --batch"
+    description: "Enumerate tables in database"
+    output_format: text
+    estimated_time: 90
+  
+  dump_table:
+    template: "sqlmap -u {target} -D {database} -T {table} --dump --batch"
+    description: "Dump specific table contents"
+    output_format: text
+    estimated_time: 240
+  
+  os_shell:
+    template: "sqlmap -u {target} --os-shell --batch"
+    description: "Attempt to get OS shell"
+    output_format: text
+    estimated_time: 300
+  
+  risk_level:
+    template: "sqlmap -u {target} --risk={risk} --level={level} --batch"
+    description: "Test with specific risk and level"
+    output_format: text
+    estimated_time: 300
+    params:
+      risk: "3"    # 1-3
+      level: "5"   # 1-5
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+risk_levels:
+  1: "Default risk (safe tests)"
+  2: "Medium risk (time-based blind)"
+  3: "High risk (OR-based injection)"
+
+test_levels:
+  1: "Limited tests"
+  2: "Default tests"
+  3: "Extended tests (cookies, user-agent)"
+  4: "Include HTTP headers"
+  5: "All payloads and tests"
+
+injection_types:
+  - boolean_based
+  - error_based
+  - union_query
+  - stacked_queries
+  - time_based_blind
+  - inline_queries
+
+complementary_tools:
+  - burpsuite  # Find injection points
+  - nikto      # Identify web technologies
+  - nuclei     # Quick vuln scan before SQLMap
+
+known_issues:
+  - "Can be very slow on time-based blind injections"
+  - "Generates lots of traffic (easily detected)"
+  - "May cause database errors or crashes"
+  - "WAF can block most payloads"
+
+success_indicators:
+  - "Parameter:"
+  - "injectable"
+  - "database:"
+  - "back-end DBMS:"
+  - "available databases"
+
+failure_indicators:
+  - "all tested parameters do not appear to be injectable"
+  - "WAF/IPS"
+  - "Connection timed out"
+  - "403 Forbidden"
+
+installation:
+  apt: "apt-get install sqlmap"
+  pip: "pip install sqlmap"
+  github: "https://github.com/sqlmapproject/sqlmap"
+
+effectiveness_baseline:
+  unprotected_sites: 0.85
+  waf_protected: 0.25
+  modern_frameworks: 0.15
+
+important_flags:
+  --batch: "Never ask for user input"
+  --random-agent: "Use random User-Agent"
+  --tamper: "Use tamper scripts to bypass WAF"
+  --threads: "Concurrent threads (default 1)"
+  --tor: "Use Tor network"
+
+ethical_warning: "Only use on authorized targets - SQL injection is illegal on unauthorized systems"

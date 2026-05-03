@@ -1,0 +1,125 @@
+name: hydra
+version: 9.5
+category: password_cracking
+description: "Fast network logon cracker supporting numerous protocols"
+
+capabilities:
+  - brute_force
+  - password_spraying
+  - credential_testing
+  - dictionary_attack
+
+target_compatibility:
+  os: [all]
+  protocols: [ssh, ftp, http, https, smb, rdp, vnc, telnet, mysql, postgresql, mssql, ldap, imap, pop3, smtp]
+
+commands:
+  ssh_attack:
+    template: "hydra -l {username} -P {password_list} ssh://{target}"
+    description: "SSH brute force attack"
+    output_format: text
+    estimated_time: 300
+  
+  http_post_form:
+    template: "hydra -l {username} -P {password_list} {target} http-post-form '{form_path}:{post_data}:{failure_string}'"
+    description: "HTTP POST form attack"
+    output_format: text
+    estimated_time: 180
+  
+  smb_attack:
+    template: "hydra -l {username} -P {password_list} smb://{target}"
+    description: "SMB brute force attack"
+    output_format: text
+    estimated_time: 240
+  
+  user_pass_lists:
+    template: "hydra -L {user_list} -P {password_list} {protocol}://{target}"
+    description: "Use both username and password lists"
+    output_format: text
+    estimated_time: 600
+  
+  threads:
+    template: "hydra -l {username} -P {password_list} -t {threads} {protocol}://{target}"
+    description: "Specify number of parallel tasks"
+    output_format: text
+    estimated_time: 150
+    params:
+      threads: "16"
+  
+  verbose_output:
+    template: "hydra -l {username} -P {password_list} -V {protocol}://{target}"
+    description: "Show each attempt"
+    output_format: text
+    estimated_time: 320
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+supported_protocols:
+  - ssh
+  - ftp
+  - http-get
+  - http-post-form
+  - https-get
+  - https-post-form
+  - smb
+  - rdp
+  - vnc
+  - telnet
+  - mysql
+  - postgresql
+  - mssql
+  - oracle
+  - ldap
+
+complementary_tools:
+  - john        # Password hash cracking
+  - hashcat     # GPU-accelerated cracking
+  - medusa      # Alternative to hydra
+
+known_issues:
+  - "Can lock out accounts if not careful"
+  - "Easily detected by IDS/IPS"
+  - "May trigger account lockout policies"
+  - "Not optimized for hash cracking (use john/hashcat)"
+
+success_indicators:
+  - "[22][ssh] host:"
+  - "login:"
+  - "password:"
+  - "valid password found"
+
+failure_indicators:
+  - "0 valid passwords found"
+  - "Connection refused"
+  - "Too many connections"
+  - "Account locked"
+
+installation:
+  apt: "apt-get install hydra"
+  brew: "brew install hydra"
+  github: "https://github.com/vanhauser-thc/thc-hydra"
+
+effectiveness_baseline:
+  weak_passwords: 0.75
+  medium_passwords: 0.35
+  with_lockout: 0.15
+
+important_flags:
+  -l: "Single username"
+  -L: "Username list file"
+  -p: "Single password"
+  -P: "Password list file"
+  -t: "Number of parallel tasks (default 16)"
+  -V: "Verbose mode"
+  -f: "Exit after first valid credential"
+  -s: "Custom port"
+
+ethical_warning: "Account brute forcing may be illegal - only use on authorized systems"
+
+best_practices:
+  - "Use rate limiting (-t 4) to avoid lockouts"
+  - "Start with common passwords first"
+  - "Monitor for account lockouts"
+  - "Consider password spraying over brute force"

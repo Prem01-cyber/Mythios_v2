@@ -1,0 +1,79 @@
+name: masscan
+version: 1.3.2
+category: network_scanning
+description: "Fastest port scanner, can scan the entire Internet in under 6 minutes"
+
+capabilities:
+  - port_scanning
+  - fast_scanning
+  - large_scale_scanning
+
+target_compatibility:
+  os: [all]
+  protocols: [tcp, udp]
+
+commands:
+  fast_scan:
+    template: "masscan {target} -p{ports} --rate={rate}"
+    description: "Fast port scan with custom rate"
+    output_format: text
+    estimated_time: 5
+    default_params:
+      ports: "1-65535"
+      rate: "10000"
+  
+  top_ports:
+    template: "masscan {target} -p80,443,22,21,25,3389,8080,8443"
+    description: "Scan common ports only"
+    output_format: text
+    estimated_time: 2
+  
+  json_output:
+    template: "masscan {target} -p{ports} -oJ {output_file}"
+    description: "Output in JSON format"
+    output_format: json
+    estimated_time: 5
+  
+  xml_output:
+    template: "masscan {target} -p{ports} -oX {output_file}"
+    description: "Output in XML format"
+    output_format: xml
+    estimated_time: 5
+
+output_format: text
+requires_auth: false
+requires_root: true  # Requires raw socket access
+
+ports_required: []
+
+complementary_tools:
+  - nmap  # Use masscan for discovery, nmap for detailed scanning
+
+known_issues:
+  - "Requires root/admin privileges"
+  - "Can overwhelm networks if rate is too high"
+  - "No service/version detection"
+  - "May trigger IDS/IPS systems"
+
+success_indicators:
+  - "Discovered open port"
+  - "rate:"
+  - "found"
+
+failure_indicators:
+  - "FAIL: bind(AF_INET)"
+  - "if: not found"
+  - "Permission denied"
+
+installation:
+  apt: "apt-get install masscan"
+  brew: "brew install masscan"
+  github: "https://github.com/robertdavidgraham/masscan"
+
+effectiveness_baseline:
+  all_targets: 0.95
+
+performance_notes:
+  - "10x-100x faster than nmap for port discovery"
+  - "Use for initial reconnaissance on large networks"
+  - "Follow up with nmap for detailed scanning"

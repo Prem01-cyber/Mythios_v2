@@ -1,0 +1,125 @@
+name: wpscan
+version: 3.8.25
+category: web_application
+description: "WordPress security scanner for vulnerabilities in core, plugins, and themes"
+
+capabilities:
+  - wordpress_scanning
+  - plugin_enumeration
+  - theme_enumeration
+  - user_enumeration
+  - vulnerability_detection
+  - weak_password_testing
+
+target_compatibility:
+  os: [all]
+  cms: [wordpress]
+  protocols: [http, https]
+
+commands:
+  basic_scan:
+    template: "wpscan --url {target}"
+    description: "Basic WordPress scan"
+    output_format: text
+    estimated_time: 60
+  
+  enumerate_all:
+    template: "wpscan --url {target} --enumerate ap,at,u"
+    description: "Enumerate all plugins, themes, and users"
+    output_format: text
+    estimated_time: 180
+    params:
+      ap: "All plugins"
+      at: "All themes"
+      u: "Users"
+  
+  vulnerable_plugins:
+    template: "wpscan --url {target} --enumerate vp"
+    description: "Enumerate vulnerable plugins only"
+    output_format: text
+    estimated_time: 90
+  
+  password_attack:
+    template: "wpscan --url {target} --usernames {users} --passwords {password_list}"
+    description: "Brute force WordPress login"
+    output_format: text
+    estimated_time: 300
+  
+  api_token:
+    template: "wpscan --url {target} --api-token {token} --enumerate vp,vt"
+    description: "Scan with WPVulnDB API token"
+    output_format: text
+    estimated_time: 120
+  
+  json_output:
+    template: "wpscan --url {target} --format json -o {output_file}"
+    description: "Output in JSON format"
+    output_format: json
+    estimated_time: 90
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+enumeration_options:
+  vp: "Vulnerable plugins"
+  ap: "All plugins"
+  p: "Popular plugins"
+  vt: "Vulnerable themes"
+  at: "All themes"
+  t: "Popular themes"
+  tt: "Timthumbs"
+  cb: "Config backups"
+  dbe: "Db exports"
+  u: "User IDs 1-100"
+  m: "Media IDs 1-100"
+
+complementary_tools:
+  - nikto        # General web server scanning
+  - nuclei       # Template-based CVE detection
+  - burpsuite    # Manual testing
+
+known_issues:
+  - "Requires API token for vulnerability database"
+  - "Plugin detection can miss some plugins"
+  - "Aggressive scans may trigger WAF"
+  - "User enumeration easily detected"
+
+success_indicators:
+  - "[+] WordPress version"
+  - "[!] Title:"
+  - "vulnerabilities identified"
+  - "Valid Credentials Found"
+
+failure_indicators:
+  - "The remote website is up, but does not seem to be running WordPress"
+  - "Error:"
+  - "Connection refused"
+
+installation:
+  gem: "gem install wpscan"
+  apt: "apt-get install wpscan"
+  docker: "docker pull wpscanteam/wpscan"
+  github: "https://github.com/wpscanteam/wpscan"
+
+effectiveness_baseline:
+  wordpress_sites: 0.88
+  heavily_customized: 0.60
+  security_plugins_active: 0.45
+
+api_token_info:
+  free_tier: "25 requests per day"
+  registration: "https://wpscan.com/register"
+  importance: "Required for vulnerability detection"
+
+important_flags:
+  --url: "Target WordPress site"
+  --enumerate: "Enumeration options"
+  --api-token: "WPVulnDB API token"
+  --passwords: "Password list for brute force"
+  --usernames: "Username list or single username"
+  --throttle: "Milliseconds to wait between requests"
+  --random-user-agent: "Use random User-Agent"
+  --force: "Do not check if target is WordPress"
+
+ethical_warning: "Only scan WordPress sites you own or have permission to test"

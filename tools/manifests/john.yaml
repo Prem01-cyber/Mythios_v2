@@ -1,0 +1,131 @@
+name: john
+version: 1.9.0-jumbo-1
+category: password_cracking
+description: "John the Ripper - Advanced password cracking tool"
+
+capabilities:
+  - password_hash_cracking
+  - dictionary_attack
+  - brute_force
+  - rule_based_attacks
+  - incremental_mode
+
+target_compatibility:
+  os: [all]
+  hash_types: [md5, sha1, sha256, sha512, ntlm, lm, bcrypt, scrypt, des, mysql, postgresql]
+
+commands:
+  crack_password:
+    template: "john {hash_file}"
+    description: "Crack passwords with default settings"
+    output_format: text
+    estimated_time: null
+  
+  wordlist_attack:
+    template: "john --wordlist={wordlist} {hash_file}"
+    description: "Dictionary attack"
+    output_format: text
+    estimated_time: 60
+  
+  with_rules:
+    template: "john --wordlist={wordlist} --rules {hash_file}"
+    description: "Wordlist with mangling rules"
+    output_format: text
+    estimated_time: 180
+  
+  show_cracked:
+    template: "john --show {hash_file}"
+    description: "Show cracked passwords"
+    output_format: text
+    estimated_time: 1
+  
+  format_specific:
+    template: "john --format={format} {hash_file}"
+    description: "Specify hash format"
+    output_format: text
+    estimated_time: null
+  
+  incremental:
+    template: "john --incremental {hash_file}"
+    description: "Brute force mode"
+    output_format: text
+    estimated_time: null
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+supported_formats:
+  - md5
+  - sha1
+  - sha256
+  - sha512
+  - ntlm
+  - lm
+  - bcrypt
+  - scrypt
+  - descrypt
+  - mysql
+  - mysql-sha1
+  - postgres
+  - raw-md5
+  - raw-sha1
+  - zip
+  - rar
+
+complementary_tools:
+  - hashcat      # GPU-accelerated cracking
+  - hydra        # Network logon cracking
+  - unshadow     # Combine passwd and shadow files
+
+known_issues:
+  - "Can be very slow for complex hashes"
+  - "CPU-bound (use hashcat for GPU)"
+  - "Incremental mode can take days/years"
+  - "May miss passwords without good wordlist"
+
+success_indicators:
+  - "Loaded"
+  - "password hashes"
+  - "guesses:"
+  - "cracked"
+
+failure_indicators:
+  - "No password hashes loaded"
+  - "Unknown ciphertext format"
+  - "Error"
+
+installation:
+  apt: "apt-get install john"
+  brew: "brew install john-jumbo"
+  github: "https://github.com/openwall/john"
+  
+effectiveness_baseline:
+  weak_passwords: 0.85
+  medium_passwords: 0.45
+  strong_passwords: 0.05
+
+important_flags:
+  --wordlist: "Path to wordlist"
+  --rules: "Enable word mangling rules"
+  --format: "Hash format"
+  --incremental: "Brute force mode"
+  --show: "Show cracked passwords"
+  --session: "Session name for resuming"
+  --restore: "Restore interrupted session"
+
+common_wordlists:
+  - "/usr/share/wordlists/rockyou.txt"
+  - "/usr/share/john/password.lst"
+  - "/usr/share/wordlists/fasttrack.txt"
+
+rules:
+  default: "Built-in mangling rules"
+  jumbo: "Extra rules for jumbo version"
+  single: "Single crack mode"
+
+performance_notes:
+  - "Multi-threaded for better performance"
+  - "Can resume interrupted sessions"
+  - "Use --fork for parallel processing"
+  - "Consider hashcat for GPU acceleration"

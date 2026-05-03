@@ -1,0 +1,110 @@
+name: smbclient
+version: 4.17.0
+category: windows_enumeration
+description: "FTP-like client for accessing SMB/CIFS resources"
+
+capabilities:
+  - smb_access
+  - file_transfer
+  - share_browsing
+  - smb_interaction
+
+target_compatibility:
+  os: [windows, linux_samba]
+  protocols: [smb1, smb2, smb3]
+
+commands:
+  list_shares:
+    template: "smbclient -L {target} -N"
+    description: "List shares (null session)"
+    output_format: text
+    estimated_time: 5
+  
+  connect_share:
+    template: "smbclient //{target}/{share} -N"
+    description: "Connect to share (null session)"
+    output_format: interactive
+    estimated_time: null
+  
+  with_credentials:
+    template: "smbclient //{target}/{share} -U {username}%{password}"
+    description: "Connect with credentials"
+    output_format: interactive
+    estimated_time: null
+  
+  execute_command:
+    template: "smbclient //{target}/{share} -N -c '{command}'"
+    description: "Execute command and exit"
+    output_format: text
+    estimated_time: 3
+  
+  download_file:
+    template: "smbclient //{target}/{share} -N -c 'get {remote_file} {local_file}'"
+    description: "Download file from share"
+    output_format: text
+    estimated_time: 10
+
+output_format: interactive
+requires_auth: false
+requires_root: false
+
+common_commands:
+  ls: "List directory contents"
+  cd: "Change directory"
+  get: "Download file"
+  put: "Upload file"
+  rm: "Delete file"
+  mkdir: "Create directory"
+  rmdir: "Remove directory"
+  help: "Show available commands"
+  exit: "Exit client"
+
+ports_required:
+  - 139
+  - 445
+
+complementary_tools:
+  - enum4linux-ng  # Automated SMB enumeration
+  - crackmapexec   # SMB exploitation
+  - impacket       # SMB protocol tools
+
+known_issues:
+  - "Interactive mode not suitable for automation"
+  - "May fail with modern SMB versions"
+  - "Limited scripting capabilities"
+
+success_indicators:
+  - "Sharename"
+  - "Domain="
+  - "getting file"
+  - "smb: \\>"
+
+failure_indicators:
+  - "NT_STATUS_ACCESS_DENIED"
+  - "NT_STATUS_BAD_NETWORK_NAME"
+  - "Connection to"
+  - "failed"
+
+installation:
+  apt: "apt-get install smbclient"
+  yum: "yum install samba-client"
+
+effectiveness_baseline:
+  null_sessions: 0.30
+  with_credentials: 0.85
+
+important_flags:
+  -L: "List shares"
+  -N: "No password (null session)"
+  -U: "Username"
+  -c: "Execute command"
+  -I: "IP address"
+  -p: "Port number"
+  -m: "Maximum protocol version"
+
+common_shares:
+  - "C$"         # Admin share
+  - "ADMIN$"     # Admin share
+  - "IPC$"       # IPC share
+  - "SYSVOL"     # Domain share
+  - "NETLOGON"   # Domain share

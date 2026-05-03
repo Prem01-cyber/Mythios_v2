@@ -1,0 +1,85 @@
+name: dnsenum
+version: 1.2.6
+category: dns_enumeration
+description: "DNS enumeration tool for discovering subdomains and DNS records"
+
+capabilities:
+  - subdomain_enumeration
+  - dns_record_enumeration
+  - zone_transfer
+  - reverse_lookup
+  - google_scraping
+
+target_compatibility:
+  os: [all]
+  protocols: [dns]
+
+commands:
+  basic:
+    template: "dnsenum {domain}"
+    description: "Basic DNS enumeration"
+    output_format: text
+    estimated_time: 60
+  
+  with_wordlist:
+    template: "dnsenum --enum {domain} -f {wordlist}"
+    description: "Enumerate with wordlist"
+    output_format: text
+    estimated_time: 120
+  
+  zone_transfer:
+    template: "dnsenum --noreverse {domain}"
+    description: "Attempt zone transfer without reverse lookup"
+    output_format: text
+    estimated_time: 30
+  
+  output_file:
+    template: "dnsenum -o {output_file} {domain}"
+    description: "Save results to file"
+    output_format: text
+    estimated_time: 60
+
+output_format: text
+requires_auth: false
+requires_root: false
+
+enumeration_methods:
+  - zone_transfer
+  - google_scraping
+  - brute_force
+  - reverse_lookup
+  - whois_queries
+
+complementary_tools:
+  - amass          # Advanced subdomain enumeration
+  - dnsrecon       # Alternative DNS enumeration
+  - subfinder      # Fast passive discovery
+
+known_issues:
+  - "Zone transfers rarely work on modern DNS"
+  - "Google scraping may be rate-limited"
+  - "Can be slow with large wordlists"
+
+success_indicators:
+  - "Brute forcing"
+  - "Host's addresses"
+  - "Name Servers"
+
+failure_indicators:
+  - "AXFR failed"
+  - "No entries"
+
+installation:
+  apt: "apt-get install dnsenum"
+  github: "https://github.com/fwaeytens/dnsenum"
+
+effectiveness_baseline:
+  subdomain_discovery: 0.70
+  zone_transfer: 0.10
+
+important_flags:
+  -f: "Wordlist file"
+  -o: "Output file"
+  --enum: "Enumerate subdomains"
+  --noreverse: "Skip reverse lookups"
+  --threads: "Number of threads"

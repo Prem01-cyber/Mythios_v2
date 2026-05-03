@@ -1,0 +1,83 @@
+name: enum4linux-ng
+version: 1.3.0
+category: windows_enumeration
+description: "SMB enumeration tool supporting SMBv1/2/3 for modern Windows systems"
+
+capabilities:
+  - smb_enumeration
+  - user_enumeration
+  - share_discovery
+  - domain_info
+  - group_enumeration
+
+target_compatibility:
+  os: [windows, linux_samba]
+  versions: 
+    windows: [7, 8, 10, 11, server_2008, server_2012, server_2016, server_2019, server_2022]
+    linux: [samba_4.x]
+  protocols: [smb1, smb2, smb3]
+
+commands:
+  full_enumeration:
+    template: "enum4linux-ng -A {target}"
+    description: "Complete enumeration (users, shares, groups, domain)"
+    output_format: text
+    estimated_time: 30
+  
+  json_output:
+    template: "enum4linux-ng -A -oJ {output_file} {target}"
+    description: "Full enumeration with JSON output"
+    output_format: json
+    estimated_time: 30
+  
+  quick_scan:
+    template: "enum4linux-ng -U -G {target}"
+    description: "Users and groups only (faster)"
+    output_format: text
+    estimated_time: 10
+  
+  shares_only:
+    template: "enum4linux-ng -S {target}"
+    description: "Enumerate shares only"
+    output_format: text
+    estimated_time: 5
+
+output_format: json
+requires_auth: false
+requires_root: false
+
+ports_required:
+  - 139  # NetBIOS
+  - 445  # SMB
+
+supersedes:
+  - enum4linux  # This tool is better than enum4linux for modern Windows
+
+known_issues:
+  - "Requires SMB ports (139/445) to be open"
+  - "May trigger AV/EDR on modern systems"
+  - "Null sessions often disabled on Windows 10+"
+
+success_indicators:
+  - "Got domain information"
+  - "Enumerated users"
+  - "Found shares"
+  - "RID cycling successful"
+
+failure_indicators:
+  - "Connection refused"
+  - "Access denied"
+  - "Timeout"
+  - "SMB signing required"
+  - "Protocol negotiation failed"
+
+installation:
+  apt: "apt-get install enum4linux-ng"
+  pip: "pip3 install enum4linux-ng"
+  github: "https://github.com/cddmp/enum4linux-ng"
+
+effectiveness_baseline:
+  windows_10: 0.82
+  windows_11: 0.79
+  windows_server_2019: 0.75
+  linux_samba: 0.68
