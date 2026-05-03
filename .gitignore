@@ -29,6 +29,9 @@ env/
 # Environment variables
 .env
 
+# Data directories (reconstructed from split files)
+vuln_data/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 *.ipynb
