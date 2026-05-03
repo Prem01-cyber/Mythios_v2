@@ -1,0 +1,496 @@
+{
+  "cve_knowledge": {},
+  "code_patterns": {
+    "label_0": {
+      "count": 35809,
+      "bug_urls": [
+        "https://github.com/libav/libav/blob/54bc15d5ebfd07fd468743ba29f709ea19e840b9/libswscale/output.c/#L1339",
+        "https://github.com/openssl/openssl/blob/04485c5bc0dc7f49940e6d91b27cdcc7b83a8ab5/crypto/bn/bn_ctx.c/#L355",
+        "https://github.com/openssl/openssl/blob/fff684168c7923aa85e6b4381d71d933396e32b0/crypto/rsa/rsa_sp800_56b_gen.c/#L125",
+        "https://github.com/openssl/openssl/blob/d91f45688c2d0bfcc5b3b57fb20cc80b010eef0b/ssl/s3_enc.c/#L518",
+        "https://github.com/openssl/openssl/blob/c21869fb07ea02ffd46e817caeb47d85a85ee8ef/crypto/pem/pvkfmt.c/#L760"
+      ],
+      "example_functions": [
+        "static void\nyuv2gbrp_full_X_c(SwsContext *c, const int16_t *lumFilter,\n                  const int16_t **lumSrc, int lumFilterSize,\n                  const int16_t *chrFilter, const int16_t **chrUSrc,\n                  const int16_t **chrVSrc, int chrFilterSize,\n                  const int16_t **alpSrc, uint8_t **dest,\n                  int dstW, int y)\n{\n    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(c->dstFormat);\n    int i;\n    int hasAlpha = (desc->flags & AV_PIX_FMT_FLAG_ALPHA) && alpSrc;\n    uint16_t **dest16 = (uint16_t**)dest;\n    int SH = 22 + 7 - desc->comp[0].depth_minus1;\n    for (i = 0; i < dstW; i++) {\n        int j;\n        int Y = 1 << 9;\n        int U = (1 << 9) - (128 << 19);\n        int V = (1 << 9) - (128 << 19);\n        int R, G, B, A;\n        for (j = 0; j < lumFilterSize; j++)\n            Y += lumSrc[j][i] * lumFilter[j];\n        for (j = 0; j < chrFilterSize; j++) {\n            U += chrUSrc[j][i] * chrFilter[j];\n            V += chrVSrc[j][i] * chrFilter[j];\n        }\n        Y >>= 10;\n        U >>= 10;\n        V >>= 10;\n        if (hasAlpha) {\n            A = 1 << 18;\n            for (j = 0; j < lumFilterSize; j++)\n                A += alpSrc[j][i] * lumFilter[j];\n            A >>= 19;\n            if (A & 0x100)\n                A = av_clip_uint8(A);\n        }\n        Y -= c->yuv2rgb_y_offset;\n        Y *= c->yuv2rgb_y_coeff;\n        Y += 1 << 21;\n        R = Y + V * c->yuv2rgb_v2r_coeff;\n        G = Y + V * c->yuv2rgb_v2g_coeff + U * c->yuv2rgb_u2g_coeff;\n        B = Y +                            U * c->yuv2rgb_u2b_coeff;\n        if ((R | G | B) & 0xC0000000) {\n            R = av_clip_uintp2(R, 30);\n            G = av_clip_uintp2(G, 30);\n            B = av_clip_uintp2(B, 30);\n        }\n        if (SH != 22) {\n            dest16[0][i] = G >> SH;\n            dest16[1][i] = B >> SH;\n            dest16[2][i] = R >> SH;\n            if (hasAlpha)\n                dest16[3][i] = A;\n        } else {\n            dest[0][i] = G >> 22;\n            dest[1][i] = B >> 22;\n            dest[2][i] = R >> 22;\n            if (hasAlpha)\n                dest[3][i] = A;\n        }\n    }\n    if (SH != 22 && (!isBE(c->dstFormat)) != (!HAVE_BIGENDIAN)) {\n        for (i = 0; i < dstW; i++) {\n            dest16[0][i] = av_bswap16(dest16[0][i]);\n            dest16[1][i] = av_bswap16(dest16[1][i]);\n            dest16[2][i] = av_bswap16(dest16[2][i]);\n            if (hasAlpha)\n                dest16[3][i] = av_bswap16(dest16[3][i]);\n        }\n    }\n}",
+        "static unsigned int BN_STACK_pop(BN_STACK *st)\n\t{\n\treturn st->indexes[--(st->depth)];\n\t}"
+      ]
+    },
+    "label_1": {
+      "count": 910,
+      "bug_urls": [
+        "https://github.com/libav/libav/blob/63e8d9760f23a4edf81e9ae58c4f6d3baa6ff4dd/libavcodec/mpegaudiodec.c/#L681",
+        "https://github.com/libav/libav/blob/e754dfc0bba4f81fe797f240fca94fea5dfd925e/libavcodec/ac3enc.c/#L2553",
+        "https://github.com/openssl/openssl/blob/3da2e9c4ee45989a426ff513dc6c6250d1e460de/crypto/bn/bn_shift.c/#L112",
+        "https://github.com/apache/httpd/blob/5e39d4b16a097ae7b570b28dec9f3de754dc2977/support/rotatelogs.c/#L698",
+        "https://github.com/openssl/openssl/blob/3aecef76973dbea037ec4e1ceba7ec1bd3fb683a/crypto/objects/obj_dat.c/#L479"
+      ],
+      "example_functions": [
+        "static void apply_window_mp3_c(MPA_INT *synth_buf, MPA_INT *window,\n                               int *dither_state, OUT_INT *samples, int incr)\n{\n    register const MPA_INT *w, *w2, *p;\n    int j;\n    OUT_INT *samples2;\n#if CONFIG_FLOAT\n    float sum, sum2;\n#elif FRAC_BITS <= 15\n    int sum, sum2;\n#else\n    int64_t sum, sum2;\n#endif\n    memcpy(synth_buf + 512, synth_buf, 32 * sizeof(*synth_buf));\n    samples2 = samples + 31 * incr;\n    w = window;\n    w2 = window + 31;\n    sum = *dither_state;\n    p = synth_buf + 16;\n    SUM8(MACS, sum, w, p);\n    p = synth_buf + 48;\n    SUM8(MLSS, sum, w + 32, p);\n    *samples = round_sample(&sum);\n    samples += incr;\n    w++;\n    for(j=1;j<16;j++) {\n        sum2 = 0;\n        p = synth_buf + 16 + j;\n        SUM8P2(sum, MACS, sum2, MLSS, w, w2, p);\n        p = synth_buf + 48 - j;\n        SUM8P2(sum, MLSS, sum2, MLSS, w + 32, w2 + 32, p);\n        *samples = round_sample(&sum);\n        samples += incr;\n        sum += sum2;\n        *samples2 = round_sample(&sum);\n        samples2 -= incr;\n        w++;\n        w2--;\n    }\n    p = synth_buf + 32;\n    SUM8(MLSS, sum, w + 32, p);\n    *samples = round_sample(&sum);\n    *dither_state= sum;\n}",
+        "static av_cold void set_bandwidth(AC3EncodeContext *s)\n{\n    int blk, ch;\n    int av_uninit(cpl_start);\n    if (s->cutoff) {\n        int fbw_coeffs;\n        fbw_coeffs     = s->cutoff * 2 * AC3_MAX_COEFS / s->sample_rate;\n        s->bandwidth_code = av_clip((fbw_coeffs - 73) / 3, 0, 60);\n    } else {\n        s->bandwidth_code = ac3_bandwidth_tab[s->fbw_channels-1][s->bit_alloc.sr_code][s->frame_size_code/2];\n    }\n    for (ch = 1; ch <= s->fbw_channels; ch++) {\n        s->start_freq[ch] = 0;\n        for (blk = 0; blk < AC3_MAX_BLOCKS; blk++)\n            s->blocks[blk].end_freq[ch] = s->bandwidth_code * 3 + 73;\n    }\n    if (s->lfe_on) {\n        s->start_freq[s->lfe_channel] = 0;\n        for (blk = 0; blk < AC3_MAX_BLOCKS; blk++)\n            s->blocks[blk].end_freq[ch] = 7;\n    }\n    if (s->cpl_enabled) {\n        if (s->options.cpl_start >= 0) {\n            cpl_start = s->options.cpl_start;\n        } else {\n            cpl_start = ac3_coupling_start_tab[s->channel_mode-2][s->bit_alloc.sr_code][s->frame_size_code/2];\n            if (cpl_start < 0)\n                s->cpl_enabled = 0;\n        }\n    }\n    if (s->cpl_enabled) {\n        int i, cpl_start_band, cpl_end_band;\n        uint8_t *cpl_band_sizes = s->cpl_band_sizes;\n        cpl_end_band   = s->bandwidth_code / 4 + 3;\n        cpl_start_band = av_clip(cpl_start, 0, FFMIN(cpl_end_band-1, 15));\n        s->num_cpl_subbands = cpl_end_band - cpl_start_band;\n        s->num_cpl_bands = 1;\n        *cpl_band_sizes  = 12;\n        for (i = cpl_start_band + 1; i < cpl_end_band; i++) {\n            if (ff_eac3_default_cpl_band_struct[i]) {\n                *cpl_band_sizes += 12;\n            } else {\n                s->num_cpl_bands++;\n                cpl_band_sizes++;\n                *cpl_band_sizes = 12;\n            }\n        }\n        s->start_freq[CPL_CH] = cpl_start_band * 12 + 37;\n        s->cpl_end_freq       = cpl_end_band   * 12 + 37;\n        for (blk = 0; blk < AC3_MAX_BLOCKS; blk++)\n            s->blocks[blk].end_freq[CPL_CH] = s->cpl_end_freq;\n    }\n}"
+      ]
+    }
+  },
+  "residual_bugs": {
+    "security": {
+      "count": 192,
+      "projects": {
+        "django": 59,
+        "openstack": 28,
+        "numpy": 8,
+        "twisted": 8,
+        "djblets": 7,
+        "zulip": 6,
+        "tensorflow": 6,
+        "pycrypto": 5,
+        "salt": 5,
+        "cpython": 4,
+        "psiturk": 3,
+        "waitress": 3,
+        "edx-platform": 3,
+        "pillow": 3,
+        "jupyter": 2,
+        "ansible": 2,
+        "saleor": 2,
+        "keylime": 2,
+        "mistune": 2,
+        "pyopenssl": 2,
+        "console": 2,
+        "b2-sdk": 1,
+        "clone_aveola": 1,
+        "msm": 1,
+        "supervisor": 1,
+        "weblate": 1,
+        "ipython": 1,
+        "archivy": 1,
+        "opendiamond": 1,
+        "gate": 1,
+        "markdown-it": 1,
+        "bodhi": 1,
+        "lshell": 1,
+        "cookiecutter": 1,
+        "pyoidc": 1,
+        "intel-optimization-for-horovod": 1,
+        "wgerprivacy": 1,
+        "bottle-auth": 1,
+        "requests": 1,
+        "wagtail-2fa": 1,
+        "pysaml2": 1,
+        "mitogen": 1,
+        "paramiko": 1,
+        "html5lib": 1,
+        "soundslike": 1,
+        "shinken": 1,
+        "healthchecks": 1,
+        "mlalchemy": 1,
+        "urllib3": 1,
+        "zope": 1,
+        "mako": 1
+      },
+      "fault_acronyms": {
+        "MIFS": 20,
+        "WFCD": 16,
+        "WFCS": 15,
+        "WSUIT": 11,
+        "WVIV": 11,
+        "MLPS": 11,
+        "WALL": 11,
+        "WPFV": 9,
+        "MPFC": 9,
+        "WLEC": 8,
+        "WPFL": 8,
+        "MFC": 6,
+        "WVAV": 6,
+        "WALD": 5,
+        "MFCE": 5,
+        "MVAV": 4,
+        "WVAE": 4,
+        "MLAC": 4,
+        "MIEB": 4,
+        "MVAE": 4,
+        "WALR": 3,
+        "MLPL": 2,
+        "WAEC": 2,
+        "MIA": 2,
+        "WPFO": 2,
+        "MIES": 2,
+        "MFCT": 1,
+        "MLAA": 1,
+        "WIDI": 1,
+        "WLEP": 1,
+        "WPFML": 1,
+        "WRV": 1,
+        "MEH": 1,
+        "WSUC": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def _make_sqlite_account_info(self, env=None, last_upgrade_to_run=None):\\n\\t\\twith mock.patch('os.environ', env or {'HOME': self.home}):\\n\\t\\t\\treturn SqliteAccountInfo(\\n\\t\\t\\t\\tfile_name=self.db_path if not env else None,\\n\\t\\t\\t\\tlast_upgrade_to_run=last_upgrade_to_run,\\n\\t\\t\\t)",
+          "fault_free_code": "def _make_sqlite_account_info(self, env=None, last_upgrade_to_run=None):\\n\\t\\twith mock.patch('os.environ', env or {'HOME': self.test_home}):\\n\\t\\t\\treturn SqliteAccountInfo(\\n\\t\\t\\t\\tfile_name=self.db_path if not env else None,\\n\\t\\t\\t\\tlast_upgrade_to_run=last_upgrade_to_run,\\n\\t\\t\\t)",
+          "bug_description": "Merge pull request from GHSA-p867-fxfr-ph2w\\n\\n\\nThanks to Jan Schejbal for responsible disclosure!\\n\\nThere used to be a brief moment between creation of the sqlite\\ndatabase and applying chmod, now there is no such delay."
+        },
+        {
+          "faulty_code": "def _validate_source(source, req):\\n\\t\\tif source:\\n\\t\\t\\tpieces = urlparse.urlparse(source)\\n\\t\\t\\tschemes = [scheme for scheme in store.get_known_schemes()\\n\\t\\t\\t\\t\\t   if scheme != 'file']\\n\\t\\t\\tfor scheme in schemes:\\n\\t\\t\\t\\tif pieces.scheme == scheme:\\n\\t\\t\\t\\t\\treturn source\\n\\t\\t\\tmsg = \"External sourcing not supported for store %s\" % source\\n\\t\\t\\tLOG.debug(msg)\\n\\t\\t\\traise HTTPBadRequest(explanation=msg,\\n\\t\\t\\t\\t\\t\\t\\t\\t request=req,\\n\\t\\t\\t\\t\\t\\t\\t\\t content_type=\"text/plain\")",
+          "fault_free_code": "def _validate_source(source, req):\\n\\t\\tif source:\\n\\t\\t\\tpieces = urlparse.urlparse(source)\\n\\t\\t\\tschemes = [scheme for scheme in store.get_known_schemes()\\n\\t\\t\\t\\t\\t   if scheme != 'file' and scheme != 'swift+config']\\n\\t\\t\\tfor scheme in schemes:\\n\\t\\t\\t\\tif pieces.scheme == scheme:\\n\\t\\t\\t\\t\\treturn source\\n\\t\\t\\tmsg = (\"External sourcing not supported for \"\\n\\t\\t\\t\\t   \"store '%s'\" % pieces.scheme)\\n\\t\\t\\tLOG.debug(msg)\\n\\t\\t\\traise HTTPBadRequest(explanation=msg,\\n\\t\\t\\t\\t\\t\\t\\t\\t request=req,\\n\\t\\t\\t\\t\\t\\t\\t\\t content_type=\"text/plain\")",
+          "bug_description": "Prevent setting swift+config locations\\n\\nForbid setting 'swift+config' locations in a similar\\nmanner to 'file' for security reasons; knowledge of\\nthe reference name should not be exploitable.\\n\\nSetting swift+config had been prevented when swift\\nwas the default store, this patch changes to forbid\\nsetting no matter which store is the default.\\n\\nAs with change id I75af34145521f533dcd6f5fd7690f5a68f3b44b3\\nthis is v1 only for now.\\n\\nCloses-bug: 1334196"
+        },
+        {
+          "faulty_code": "def _single_run(self, application, sock):\\n\\t\\tself.logger.info(_(\"Starting single process server\"))\\n\\t\\teventlet.wsgi.server(sock, application, custom_pool=self.pool,\\n\\t\\t\\t\\t\\t\\t\\t log=WritableLogger(self.logger))",
+          "fault_free_code": "def _single_run(self, application, sock):\\n\\t\\tself.logger.info(_(\"Starting single process server\"))\\n\\t\\teventlet.wsgi.server(sock, application, custom_pool=self.pool,\\n\\t\\t\\t\\t\\t\\t\\t log=WritableLogger(self.logger), debug=False)",
+          "bug_description": "Do not send traceback to clients by default\\n\\neventlet.wsgi.server contains a \"debug\" param which is True by default.\\nThis sends tracebacks to the client on 500 errors, which is not\\ndesirable for security reasons.\\n\\nSet this to be False by default.\\n\\nFixes bug 1192132"
+        }
+      ]
+    },
+    "binop": {
+      "count": 28,
+      "projects": {
+        "cpython": 10,
+        "pytorch": 6,
+        "pandas": 5,
+        "scikit-learn": 2,
+        "cookiecutter": 1,
+        "django": 1,
+        "numpy": 1,
+        "fastapi": 1,
+        "tqdm": 1
+      },
+      "fault_acronyms": {
+        "WLEC": 10,
+        "MLPL": 6,
+        "WVAV": 3,
+        "WAEC": 2,
+        "WAEP": 2,
+        "WALL": 2,
+        "WVAE": 1,
+        "WVIV": 1,
+        "WPFV": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def test_parse_cookiecutter_args():\\targs = main.parse_cookiecutter_args(['project/'])\\tassert args.input_dir == 'project/'\\tassert args.checkout == None",
+          "fault_free_code": "def test_parse_cookiecutter_args():\\n\\targs = main.parse_cookiecutter_args(['project/'])\\n\\tassert args.input_dir == 'project/'\\n\\tassert args.checkout is None",
+          "bug_description": "Change comparision to 'is' in order to fix flake8"
+        },
+        {
+          "faulty_code": "def writer_enters(self):\\t\\twith self.mutex:\\t\\t\\tif self.active_writers == 0 and self.waiting_writers == 0 and self.active_readers == 0:\\t\\t\\t\\tself.active_writers += 1\\t\\t\\t\\tself.can_write.release()\\t\\t\\telse:\\t\\t\\t\\tself.waiting_writers += 1\\t\\tself.can_write.acquire()",
+          "fault_free_code": "def writer_enters(self):\\n\\t\\twith self.mutex:\\n\\t\\t\\tif self.active_writers == 0 and self.waiting_writers == 0 and self.active_readers == 0:\\n\\t\\t\\t\\tself.active_writers = 1\\n\\t\\t\\t\\tself.can_write.release()\\n\\t\\t\\telse:\\n\\t\\t\\t\\tself.waiting_writers += 1\\n\\t\\tself.can_write.acquire()",
+          "bug_description": "Fixed #28984 -- Made assorted code simplifications."
+        },
+        {
+          "faulty_code": "def eig(a):\\t\"\"\"\\tCompute the eigenvalues and right eigenvectors of a square array.\\tParameters\\t----------\\ta : array_like, shape (M, M)\\t\\tA square array of real or complex elements.\\tReturns\\t-------\\tw : ndarray, shape (M,)\\t\\tThe eigenvalues, each repeated according to its multiplicity.\\t\\tThe eigenvalues are not necessarily ordered, nor are they\\t\\tnecessarily real for real arrays (though for real arrays\\t\\tcomplex-valued eigenvalues should occur in conjugate pairs).\\tv : ndarray, shape (M, M)\\t\\tThe normalized (unit \"length\") eigenvectors, such that the\\t\\tcolumn ``v[:,i]`` is the eigenvector corresponding to the\\t\\teigenvalue ``w[i]``.\\tRaises\\t------\\tLinAlgError\\t\\tIf the eigenvalue computation does not converge.\\tSee Also\\t--------\\teigvalsh : eigenvalues of a symmetric or Hermitian (conjugate symmetric)\\t   array.\\teigvals : eigenvalues of a non-symmetric array.\\tNotes\\t-----\\tThis is a simple interface to the LAPACK routines dgeev and zgeev\\twhich compute the eigenvalues and eigenvectors of, respectively,\\tgeneral real- and complex-valued square arrays.\\tThe number `w` is an eigenvalue of `a` if there exists a vector\\t`v` such that ``dot(a,v) = w * v``. Thus, the arrays `a`, `w`, and\\t`v` satisfy the equations ``dot(a[i,:], v[i]) = w[i] * v[:,i]``\\tfor :math:`i \\\\in \\\\{0,...,M-1\\\\}`.\\tThe array `v` of eigenvectors may not be of maximum rank, that is, some\\tof the columns may be linearly dependent, although round-off error may\\tobscure that fact. If the eigenvalues are all different, then theoretically\\tthe eigenvectors are linearly independent. Likewise, the (complex-valued)\\tmatrix of eigenvectors `v` is unitary if the matrix `a` is normal, i.e.,\\tif ``dot(a, a.H) = dot(a.H, a)``, where `a.H` denotes the conjugate\\ttranspose of `a`.\\tFinally, it is emphasized that `v` consists of the *right* (as in\\tright-hand side) eigenvectors of `a`.  A vector `y` satisfying\\t``dot(y.T, a) = z * y.T`` for some number `z` is called a *left*\\teigenvector of `a`, and, in general, the left and right eigenvectors\\tof a matrix are not necessarily the (perhaps conjugate) transposes\\tof each other.\\tReferences\\t----------\\tG. Strang, *Linear Algebra and Its Applications*, 2nd Ed., Orlando, FL,\\tAcademic Press, Inc., 1980, Various pp.\\tExamples\\t--------\\t>>> from numpy import linalg as LA\\t(Almost) trivial example with real e-values and e-vectors.\\t>>> w, v = LA.eig(np.diag((1, 2, 3)))\\t>>> w; v\\tarray([ 1.,  2.,  3.])\\tarray([[ 1.,  0.,  0.],\\t\\t   [ 0.,  1.,  0.],\\t\\t   [ 0.,  0.,  1.]])\\tReal matrix possessing complex e-values and e-vectors; note that the\\te-values are complex conjugates of each other.\\t>>> w, v = LA.eig(np.array([[1, -1], [1, 1]]))\\t>>> w; v\\tarray([ 1. + 1.j,  1. - 1.j])\\tarray([[ 0.70710678+0.j\\t\\t,  0.70710678+0.j\\t\\t],\\t\\t   [ 0.00000000-0.70710678j,  0.00000000+0.70710678j]])\\tComplex-valued matrix with real e-values (but complex-valued e-vectors);\\tnote that a.conj().T = a, i.e., a is Hermitian.\\t>>> a = np.array([[1, 1j], [-1j, 1]])\\t>>> w, v = LA.eig(a)\\t>>> w; v\\tarray([  2.00000000e+00+0.j,   5.98651912e-36+0.j])",
+          "fault_free_code": "def eig(a):\\n\\ta, wrap = _makearray(a)\\n\\t_assertRank2(a)\\n\\t_assertSquareness(a)\\n\\t_assertFinite(a)\\n\\ta, t, result_t = _convertarray(a) \\n\\treal_t = _linalgRealType(t)\\n\\tn = a.shape[0]\\n\\tdummy = zeros((1,), t)\\n\\tif isComplexType(t):\\n\\t\\tlapack_routine = lapack_lite.zgeev\\n\\t\\tw = zeros((n,), t)\\n\\t\\tv = zeros((n, n), t)\\n\\t\\tlwork = 1\\n\\t\\twork = zeros((lwork,), t)\\n\\t\\trwork = zeros((2*n,), real_t)\\n\\t\\tresults = lapack_routine(_N, _V, n, a, n, w,\\n\\t\\t\\t\\t\\t\\t\\t\\t dummy, 1, v, n, work, -1, rwork, 0)\\n\\t\\tlwork = int(abs(work[0]))\\n\\t\\twork = zeros((lwork,), t)\\n\\t\\tresults = lapack_routine(_N, _V, n, a, n, w,\\n\\t\\t\\t\\t\\t\\t\\t\\t dummy, 1, v, n, work, lwork, rwork, 0)\\n\\telse:\\n\\t\\tlapack_routine = lapack_lite.dgeev\\n\\t\\twr = zeros((n,), t)\\n\\t\\twi = zeros((n,), t)\\n\\t\\tvr = zeros((n, n), t)\\n\\t\\tlwork = 1\\n\\t\\twork = zeros((lwork,), t)\\n\\t\\tresults = lapack_routine(_N, _V, n, a, n, wr, wi,\\n\\t\\t\\t\\t\\t\\t\\t\\t  dummy, 1, vr, n, work, -1, 0)\\n\\t\\tlwork = int(work[0])\\n\\t\\twork = zeros((lwork,), t)\\n\\t\\tresults = lapack_routine(_N, _V, n, a, n, wr, wi,\\n\\t\\t\\t\\t\\t\\t\\t\\t  dummy, 1, vr, n, work, lwork, 0)\\n\\t\\tif all(wi == 0.0):\\n\\t\\t\\tw = wr\\n\\t\\t\\tv = vr\\n\\t\\t\\tresult_t = _realType(result_t)\\n\\t\\telse:\\n\\t\\t\\tw = wr+1j*wi\\n\\t\\t\\tv = array(vr, w.dtype)\\n\\t\\t\\tind = flatnonzero(wi != 0.0)\\t  \\n\\t\\t\\tfor i in range(len(ind)//2):\\n\\t\\t\\t\\tv[ind[2*i]] = vr[ind[2*i]] + 1j*vr[ind[2*i+1]]\\n\\t\\t\\t\\tv[ind[2*i+1]] = vr[ind[2*i]] - 1j*vr[ind[2*i+1]]\\n\\t\\t\\tresult_t = _complexType(result_t)\\n\\tif results['info'] > 0:\\n\\t\\traise LinAlgError, 'Eigenvalues did not converge'\\n\\tvt = v.transpose().astype(result_t)\\n\\treturn w.astype(result_t), wrap(vt)",
+          "bug_description": "3K: linalg: fix integer division issue and tests"
+        }
+      ]
+    },
+    "numeric": {
+      "count": 16,
+      "projects": {
+        "cpython": 5,
+        "scikit-learn": 4,
+        "django": 2,
+        "pandas": 2,
+        "matplotlib": 1,
+        "numpy": 1,
+        "pytorch": 1
+      },
+      "fault_acronyms": {
+        "WVIV": 3,
+        "MLPS": 3,
+        "MLPL": 2,
+        "WPFL": 2,
+        "WALD": 1,
+        "WRV": 1,
+        "WVAV": 1,
+        "WPLA": 1,
+        "WLEC": 1,
+        "WIDI": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def test_types(self):\\t\\tinstance = self.model(value=0)\\t\\tself.assertIsInstance(instance.value, int)\\t\\tinstance.save()\\t\\tself.assertIsInstance(instance.value, int)\\t\\tinstance = self.model.objects.get()\\t\\tself.assertIsInstance(instance.value, int)",
+          "fault_free_code": "def test_types(self):\\n\\t\\tinstance = self.model(value=1)\\n\\t\\tself.assertIsInstance(instance.value, int)\\n\\t\\tinstance.save()\\n\\t\\tself.assertIsInstance(instance.value, int)\\n\\t\\tinstance = self.model.objects.get()\\n\\t\\tself.assertIsInstance(instance.value, int)",
+          "bug_description": "Fixed #29979, Refs #17337 -- Extracted AutoField field logic into a mixin and refactored AutoFields.\\n\\nThis reduces duplication by allowing AutoField, BigAutoField and\\nSmallAutoField to inherit from IntegerField, BigIntegerField and\\nSmallIntegerField respectively. Doing so also allows for enabling the\\nmax_length warning check and minimum/maximum value validation for auto\\nfields, as well as providing a mixin that can be used for other possible\\nfuture auto field types such as a theoretical UUIDAutoField."
+        },
+        {
+          "faulty_code": "def test_invalid_keys(self):\\t\\t\"\"\"\\t\\tAll the builtin backends (except memcached, see below) should warn on\\t\\tkeys that would be refused by memcached. This encourages portable\\t\\tcaching code without making it too difficult to use production backends\\t\\twith more liberal key rules. Refs",
+          "fault_free_code": "def test_invalid_keys(self):",
+          "bug_description": "Fixed #26460 -- Issued a single warning for invalid cache key"
+        },
+        {
+          "faulty_code": "def test_streamplot_limits():\\tax = plt.axes()\\tx = np.linspace(-5, 10, 20)\\ty = np.linspace(-2, 4, 10)\\ty, x = np.meshgrid(y, x)\\ttrans = mtransforms.Affine2D().translate(25, 32) + ax.transData\\tplt.barbs(x, y, np.sin(x), np.cos(y), transform=trans)",
+          "fault_free_code": "def test_streamplot_limits():\\n\\tax = plt.axes()\\n\\tx = np.linspace(-5, 10, 20)\\n\\ty = np.linspace(-2, 4, 10)\\n\\ty, x = np.meshgrid(y, x)\\n\\ttrans = mtransforms.Affine2D().translate(25, 32) + ax.transData\\n\\tplt.barbs(x, y, np.sin(x), np.cos(y), transform=trans)\\n\\tassert_array_almost_equal(ax.dataLim.bounds, (20, 30, 15, 6),\\n\\t\\t\\t\\t\\t\\t\\t  decimal=1)",
+          "bug_description": "Fixed the failing tests on master."
+        }
+      ]
+    },
+    "varmisuse": {
+      "count": 11,
+      "projects": {
+        "cpython": 3,
+        "pytorch": 3,
+        "django": 2,
+        "pandas": 2,
+        "tensorflow": 1
+      },
+      "fault_acronyms": {
+        "MLPL": 5,
+        "WPFV": 2,
+        "WPFL": 1,
+        "WVAV": 1,
+        "WLEC": 1,
+        "WALL": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def import_string(dotted_path):\\t\\ttry:\\t\\tmodule_path, class_name = dotted_path.rsplit('.', 1)\\texcept ValueError:\\t\\tmsg = \"%s doesn't look like a module path\" % dotted_path\\t\\tsix.reraise(ImportError, ImportError(msg), sys.exc_info()[2])\\tmodule = import_module(module_path)\\ttry:\\t\\treturn getattr(module, class_name)\\texcept AttributeError:\\t\\tmsg = 'Module \"%s\" does not define a \"%s\" attribute/class' % (\\t\\t\\tdotted_path, class_name)\\t\\tsix.reraise(ImportError, ImportError(msg), sys.exc_info()[2])",
+          "fault_free_code": "def import_string(dotted_path):\\n\\ttry:\\n\\t\\tmodule_path, class_name = dotted_path.rsplit('.', 1)\\n\\texcept ValueError:\\n\\t\\tmsg = \"%s doesn't look like a module path\" % dotted_path\\n\\t\\tsix.reraise(ImportError, ImportError(msg), sys.exc_info()[2])\\n\\tmodule = import_module(module_path)\\n\\ttry:\\n\\t\\treturn getattr(module, class_name)\\n\\texcept AttributeError:\\n\\t\\tmsg = 'Module \"%s\" does not define a \"%s\" attribute/class' % (\\n\\t\\t\\tmodule_path, class_name)\\n\\t\\tsix.reraise(ImportError, ImportError(msg), sys.exc_info()[2])",
+          "bug_description": "Fixed ImportError message in utils.module_loading.import_string()"
+        },
+        {
+          "faulty_code": "def build_test(label):\\t\\tparts = label.split('.')\\tif len(parts) < 2 or len(parts) > 3:\\t\\traise ValueError(\"Test label '%s' should be of the form app.TestCase \"\\t\\t\\t\\t\\t\\t \"or app.TestCase.test_method\" % label)\\tapp_config = apps.get_app_config(parts[0])\\tmodels_module = app_config.models_module\\ttests_module = get_tests(app_config)\\ttest_modules = []\\tif models_module:\\t\\ttest_modules.append(models_module)\\tif tests_module:\\t\\ttest_modules.append(tests_module)\\tTestClass = None\\tfor module in test_modules:\\t\\tTestClass = getattr(models_module, parts[1], None)\\t\\tif TestClass is not None:\\t\\t\\tbreak\\ttry:\\t\\tif issubclass(TestClass, (unittest.TestCase, real_unittest.TestCase)):\\t\\t\\tif len(parts) == 2:",
+          "fault_free_code": "def build_test(label):\\n\\tparts = label.split('.')\\n\\tif len(parts) < 2 or len(parts) > 3:\\n\\t\\traise ValueError(\"Test label '%s' should be of the form app.TestCase \"\\n\\t\\t\\t\\t\\t\\t \"or app.TestCase.test_method\" % label)\\n\\tapp_config = apps.get_app_config(parts[0])\\n\\tmodels_module = app_config.models_module\\n\\ttests_module = get_tests(app_config)\\n\\ttest_modules = []\\n\\tif models_module:\\n\\t\\ttest_modules.append(models_module)\\n\\tif tests_module:\\n\\t\\ttest_modules.append(tests_module)\\n\\tTestClass = None\\n\\tfor module in test_modules:\\n\\t\\tTestClass = getattr(module, parts[1], None)\\n\\t\\tif TestClass is not None:\\n\\t\\t\\tbreak\\n\\ttry:\\n\\t\\tif issubclass(TestClass, (unittest.TestCase, real_unittest.TestCase)):\\n\\t\\t\\tif len(parts) == 2:  \\n\\t\\t\\t\\ttry:\\n\\t\\t\\t\\t\\treturn unittest.TestLoader().loadTestsFromTestCase(\\n\\t\\t\\t\\t\\t\\tTestClass)\\n\\t\\t\\t\\texcept TypeError:\\n\\t\\t\\t\\t\\traise ValueError(\\n\\t\\t\\t\\t\\t\\t\"Test label '%s' does not refer to a test class\"\\n\\t\\t\\t\\t\\t\\t% label)\\n\\t\\t\\telse:  \\n\\t\\t\\t\\treturn TestClass(parts[2])\\n\\texcept TypeError:\\n\\t\\tpass\\n\\ttests = []\\n\\tfor module in test_modules:\\n\\t\\ttry:\\n\\t\\t\\tdoctests = make_doctest(module)\\n\\t\\t\\tfor test in doctests:\\n\\t\\t\\t\\tif test._dt_test.name in (\\n\\t\\t\\t\\t\\t\\t'%s.%s' % (module.__name__, '.'.join(parts[1:])),\\n\\t\\t\\t\\t\\t\\t'%s.__test__.%s' % (\\n\\t\\t\\t\\t\\t\\t\\tmodule.__name__, '.'.join(parts[1:]))):\\n\\t\\t\\t\\t\\ttests.append(test)\\n\\t\\texcept ValueError:\\n\\t\\t\\tpass\\n\\tif not tests:\\n\\t\\traise ValueError(\"Test label '%s' does not refer to a test\" % label)\\n\\treturn unittest.TestSuite(tests)",
+          "bug_description": "[1.7.x] Fixed #22478 -- Regression in test label discovery.\\n\\nAs part of the app-loading updates the old test runner was changed to not\\nrequire a models module. This introduced a regression in behavior so\\napplabel.TestCase failed for tests defined in a directory.\\n\\nThe fix is thanks to yakky and rtnpro."
+        },
+        {
+          "faulty_code": "def register_option(key, defval, doc='', validator=None, cb=None):\\t\\timport tokenize\\timport keyword\\tkey = key.lower()\\tif key in _registered_options:\\t\\traise OptionError(\"Option '%s' has already been registered\" % key)\\tif key in _reserved_keys:\\t\\traise OptionError(\"Option '%s' is a reserved key\" % key)",
+          "fault_free_code": "def register_option(key, defval, doc='', validator=None, cb=None):\\n\\timport tokenize\\n\\timport keyword\\n\\tkey = key.lower()\\n\\tif key in _registered_options:\\n\\t\\traise OptionError(\"Option '%s' has already been registered\" % key)\\n\\tif key in _reserved_keys:\\n\\t\\traise OptionError(\"Option '%s' is a reserved key\" % key)\\n\\tif validator:\\n\\t\\tvalidator(defval)\\n\\tpath = key.split('.')\\n\\tfor k in path:\\n\\t\\tif not bool(re.match('^' + tokenize.Name + '$', k)):\\n\\t\\t\\traise ValueError(\"%s is not a valid identifier\" % k)\\n\\t\\tif keyword.iskeyword(k):\\n\\t\\t\\traise ValueError(\"%s is a python keyword\" % k)\\n\\tcursor = _global_config\\n\\tfor i, p in enumerate(path[:-1]):\\n\\t\\tif not isinstance(cursor, dict):\\n\\t\\t\\traise OptionError(\"Path prefix to option '%s' is already an option\"\\n\\t\\t\\t\\t\\t\\t\\t  % '.'.join(path[:i]))\\n\\t\\tif p not in cursor:\\n\\t\\t\\tcursor[p] = {}\\n\\t\\tcursor = cursor[p]\\n\\tif not isinstance(cursor, dict):\\n\\t\\traise OptionError(\"Path prefix to option '%s' is already an option\"\\n\\t\\t\\t\\t\\t\\t  % '.'.join(path[:-1]))\\n\\tcursor[path[-1]] = defval  \\n\\t_registered_options[key] = RegisteredOption(key=key, defval=defval,\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\tdoc=doc, validator=validator,\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\tcb=cb)",
+          "bug_description": "Bugfix: Prevent configuration paths to contain python keywords"
+        }
+      ]
+    },
+    "perf": {
+      "count": 12,
+      "projects": {
+        "spacy": 9,
+        "keras": 3
+      },
+      "fault_acronyms": {
+        "WIDS": 2,
+        "WLEP": 2,
+        "WLEC": 2,
+        "WSUIT": 2,
+        "MPFC": 1,
+        "WALR": 1,
+        "MIES": 1,
+        "MLAC": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def replace_listeners(\\n\\t\\tself,\\n\\t\\ttok2vec_name: str,\\n\\t\\tpipe_name: str,\\n\\t\\tlisteners: Iterable[str],\\n\\t) -> None:\\n\\t\\tif tok2vec_name not in self.pipe_names:\\n\\t\\t\\terr = Errors.E889.format(\\n\\t\\t\\t\\ttok2vec=tok2vec_name,\\n\\t\\t\\t\\tname=pipe_name,\\n\\t\\t\\t\\tunknown=tok2vec_name,\\n\\t\\t\\t\\topts=\", \".join(self.pipe_names),\\n\\t\\t\\t)\\n\\t\\t\\traise ValueError(err)\\n\\t\\tif pipe_name not in self.pipe_names:\\n\\t\\t\\terr = Errors.E889.format(\\n\\t\\t\\t\\ttok2vec=tok2vec_name,\\n\\t\\t\\t\\tname=pipe_name,\\n\\t\\t\\t\\tunknown=pipe_name,\\n\\t\\t\\t\\topts=\", \".join(self.pipe_names),\\n\\t\\t\\t)\\n\\t\\t\\traise ValueError(err)\\n\\t\\ttok2vec = self.get_pipe(tok2vec_name)\\n\\t\\ttok2vec_cfg = self.get_pipe_config(tok2vec_name)\\n\\t\\tif not isinstance(tok2vec, ty.ListenedToComponent):\\n\\t\\t\\traise ValueError(Errors.E888.format(name=tok2vec_name, pipe=type(tok2vec)))\\n\\t\\ttok2vec_model = tok2vec.model\\n\\t\\tpipe_listeners = tok2vec.listener_map.get(pipe_name, [])\\n\\t\\tpipe = self.get_pipe(pipe_name)\\n\\t\\tpipe_cfg = self._pipe_configs[pipe_name]\\n\\t\\tif listeners:\\n\\t\\t\\tutil.logger.debug(f\"Replacing listeners of component '{pipe_name}'\")\\n\\t\\t\\tif len(list(listeners)) != len(pipe_listeners):\\n\\t\\t\\t\\terr = Errors.E887.format(\\n\\t\\t\\t\\t\\tname=pipe_name,\\n\\t\\t\\t\\t\\ttok2vec=tok2vec_name,\\n\\t\\t\\t\\t\\tpaths=listeners,\\n\\t\\t\\t\\t\\tn_listeners=len(pipe_listeners),\\n\\t\\t\\t\\t)\\n\\t\\t\\t\\traise ValueError(err)\\n\\t\\t\\tfor listener_path in listeners:\\n\\t\\t\\t\\ttry:\\n\\t\\t\\t\\t\\tutil.dot_to_object(pipe_cfg, listener_path)\\n\\t\\t\\t\\texcept KeyError:\\n\\t\\t\\t\\t\\terr = Errors.E886.format(\\n\\t\\t\\t\\t\\t\\tname=pipe_name, tok2vec=tok2vec_name, path=listener_path\\n\\t\\t\\t\\t\\t)\\n\\t\\t\\t\\t\\traise ValueError(err)\\n\\t\\t\\t\\tnew_config = tok2vec_cfg[\"model\"]\\n\\t\\t\\t\\tif \"replace_listener_cfg\" in tok2vec_model.attrs:\\n\\t\\t\\t\\t\\treplace_func = tok2vec_model.attrs[\"replace_listener_cfg\"]\\n\\t\\t\\t\\t\\tnew_config = replace_func(\\n\\t\\t\\t\\t\\t\\ttok2vec_cfg[\"model\"], pipe_cfg[\"model\"][\"tok2vec\"]\\n\\t\\t\\t\\t\\t)\\n\\t\\t\\t\\tutil.set_dot_to_object(pipe_cfg, listener_path, new_config)\\n\\t\\t\\tfor listener in pipe_listeners:\\n\\t\\t\\t\\tnew_model = tok2vec_model.copy()\\n\\t\\t\\t\\tif \"replace_listener\" in tok2vec_model.attrs:\\n\\t\\t\\t\\t\\tnew_model = tok2vec_model.attrs[\"replace_listener\"](new_model)\\n\\t\\t\\t\\tutil.replace_model_node(pipe.model, listener, new_model)  \\n\\t\\t\\t\\ttok2vec.remove_listener(listener, pipe_name)",
+          "fault_free_code": "def replace_listeners(\\n\\t\\tself,\\n\\t\\ttok2vec_name: str,\\n\\t\\tpipe_name: str,\\n\\t\\tlisteners: Iterable[str],\\n\\t) -> None:\\n\\t\\tif tok2vec_name not in self.pipe_names:\\n\\t\\t\\terr = Errors.E889.format(\\n\\t\\t\\t\\ttok2vec=tok2vec_name,\\n\\t\\t\\t\\tname=pipe_name,\\n\\t\\t\\t\\tunknown=tok2vec_name,\\n\\t\\t\\t\\topts=\", \".join(self.pipe_names),\\n\\t\\t\\t)\\n\\t\\t\\traise ValueError(err)\\n\\t\\tif pipe_name not in self.pipe_names:\\n\\t\\t\\terr = Errors.E889.format(\\n\\t\\t\\t\\ttok2vec=tok2vec_name,\\n\\t\\t\\t\\tname=pipe_name,\\n\\t\\t\\t\\tunknown=pipe_name,\\n\\t\\t\\t\\topts=\", \".join(self.pipe_names),\\n\\t\\t\\t)\\n\\t\\t\\traise ValueError(err)\\n\\t\\ttok2vec = self.get_pipe(tok2vec_name)\\n\\t\\ttok2vec_cfg = self.get_pipe_config(tok2vec_name)\\n\\t\\tif not isinstance(tok2vec, ty.ListenedToComponent):\\n\\t\\t\\traise ValueError(Errors.E888.format(name=tok2vec_name, pipe=type(tok2vec)))\\n\\t\\ttok2vec_model = tok2vec.model\\n\\t\\tpipe_listeners = tok2vec.listener_map.get(pipe_name, [])\\n\\t\\tpipe = self.get_pipe(pipe_name)\\n\\t\\tpipe_cfg = self._pipe_configs[pipe_name]\\n\\t\\tif listeners:\\n\\t\\t\\tutil.logger.debug(\"Replacing listeners of component '%s'\", pipe_name)\\n\\t\\t\\tif len(list(listeners)) != len(pipe_listeners):\\n\\t\\t\\t\\terr = Errors.E887.format(\\n\\t\\t\\t\\t\\tname=pipe_name,\\n\\t\\t\\t\\t\\ttok2vec=tok2vec_name,\\n\\t\\t\\t\\t\\tpaths=listeners,\\n\\t\\t\\t\\t\\tn_listeners=len(pipe_listeners),\\n\\t\\t\\t\\t)\\n\\t\\t\\t\\traise ValueError(err)\\n\\t\\t\\tfor listener_path in listeners:\\n\\t\\t\\t\\ttry:\\n\\t\\t\\t\\t\\tutil.dot_to_object(pipe_cfg, listener_path)\\n\\t\\t\\t\\texcept KeyError:\\n\\t\\t\\t\\t\\terr = Errors.E886.format(\\n\\t\\t\\t\\t\\t\\tname=pipe_name, tok2vec=tok2vec_name, path=listener_path\\n\\t\\t\\t\\t\\t)\\n\\t\\t\\t\\t\\traise ValueError(err)\\n\\t\\t\\t\\tnew_config = tok2vec_cfg[\"model\"]\\n\\t\\t\\t\\tif \"replace_listener_cfg\" in tok2vec_model.attrs:\\n\\t\\t\\t\\t\\treplace_func = tok2vec_model.attrs[\"replace_listener_cfg\"]\\n\\t\\t\\t\\t\\tnew_config = replace_func(\\n\\t\\t\\t\\t\\t\\ttok2vec_cfg[\"model\"], pipe_cfg[\"model\"][\"tok2vec\"]\\n\\t\\t\\t\\t\\t)\\n\\t\\t\\t\\tutil.set_dot_to_object(pipe_cfg, listener_path, new_config)\\n\\t\\t\\tfor listener in pipe_listeners:\\n\\t\\t\\t\\tnew_model = tok2vec_model.copy()\\n\\t\\t\\t\\tif \"replace_listener\" in tok2vec_model.attrs:\\n\\t\\t\\t\\t\\tnew_model = tok2vec_model.attrs[\"replace_listener\"](new_model)\\n\\t\\t\\t\\tutil.replace_model_node(pipe.model, listener, new_model)  \\n\\t\\t\\t\\ttok2vec.remove_listener(listener, pipe_name)",
+          "bug_description": "Have logging calls use string formatting types (#12215)"
+        },
+        {
+          "faulty_code": "def init_vocab(\\n\\tnlp: \"Language\",\\n\\t*,\\n\\tdata: Optional[Path] = None,\\n\\tlookups: Optional[Lookups] = None,\\n\\tvectors: Optional[str] = None,\\n) -> None:\\n\\tif lookups:\\n\\t\\tnlp.vocab.lookups = lookups\\n\\t\\tlogger.info(f\"Added vocab lookups: {', '.join(lookups.tables)}\")\\n\\tdata_path = ensure_path(data)\\n\\tif data_path is not None:\\n\\t\\tlex_attrs = srsly.read_jsonl(data_path)\\n\\t\\tfor lexeme in nlp.vocab:\\n\\t\\t\\tlexeme.rank = OOV_RANK\\n\\t\\tfor attrs in lex_attrs:\\n\\t\\t\\tif \"settings\" in attrs:\\n\\t\\t\\t\\tcontinue\\n\\t\\t\\tlexeme = nlp.vocab[attrs[\"orth\"]]\\n\\t\\t\\tlexeme.set_attrs(**attrs)\\n\\t\\tif len(nlp.vocab):\\n\\t\\t\\toov_prob = min(lex.prob for lex in nlp.vocab) - 1\\n\\t\\telse:\\n\\t\\t\\toov_prob = DEFAULT_OOV_PROB\\n\\t\\tnlp.vocab.cfg.update({\"oov_prob\": oov_prob})\\n\\t\\tlogger.info(f\"Added {len(nlp.vocab)} lexical entries to the vocab\")\\n\\tlogger.info(\"Created vocabulary\")\\n\\tif vectors is not None:\\n\\t\\tload_vectors_into_model(nlp, vectors)\\n\\t\\tlogger.info(f\"Added vectors: {vectors}\")\\n\\tsourced_vectors_hashes = nlp.meta.pop(\"_sourced_vectors_hashes\", {})\\n\\tvectors_hash = hash(nlp.vocab.vectors.to_bytes(exclude=[\"strings\"]))\\n\\tfor sourced_component, sourced_vectors_hash in sourced_vectors_hashes.items():\\n\\t\\tif vectors_hash != sourced_vectors_hash:\\n\\t\\t\\twarnings.warn(Warnings.W113.format(name=sourced_component))\\n\\tlogger.info(\"Finished initializing nlp object\")",
+          "fault_free_code": "def init_vocab(\\n\\tnlp: \"Language\",\\n\\t*,\\n\\tdata: Optional[Path] = None,\\n\\tlookups: Optional[Lookups] = None,\\n\\tvectors: Optional[str] = None,\\n) -> None:\\n\\tif lookups:\\n\\t\\tnlp.vocab.lookups = lookups\\n\\t\\tlogger.info(\"Added vocab lookups: %s\", \", \".join(lookups.tables))\\n\\tdata_path = ensure_path(data)\\n\\tif data_path is not None:\\n\\t\\tlex_attrs = srsly.read_jsonl(data_path)\\n\\t\\tfor lexeme in nlp.vocab:\\n\\t\\t\\tlexeme.rank = OOV_RANK\\n\\t\\tfor attrs in lex_attrs:\\n\\t\\t\\tif \"settings\" in attrs:\\n\\t\\t\\t\\tcontinue\\n\\t\\t\\tlexeme = nlp.vocab[attrs[\"orth\"]]\\n\\t\\t\\tlexeme.set_attrs(**attrs)\\n\\t\\tif len(nlp.vocab):\\n\\t\\t\\toov_prob = min(lex.prob for lex in nlp.vocab) - 1\\n\\t\\telse:\\n\\t\\t\\toov_prob = DEFAULT_OOV_PROB\\n\\t\\tnlp.vocab.cfg.update({\"oov_prob\": oov_prob})\\n\\t\\tlogger.info(\"Added %d lexical entries to the vocab\", len(nlp.vocab))\\n\\tlogger.info(\"Created vocabulary\")\\n\\tif vectors is not None:\\n\\t\\tload_vectors_into_model(nlp, vectors)\\n\\t\\tlogger.info(\"Added vectors: %s\", vectors)\\n\\tsourced_vectors_hashes = nlp.meta.pop(\"_sourced_vectors_hashes\", {})\\n\\tvectors_hash = hash(nlp.vocab.vectors.to_bytes(exclude=[\"strings\"]))\\n\\tfor sourced_component, sourced_vectors_hash in sourced_vectors_hashes.items():\\n\\t\\tif vectors_hash != sourced_vectors_hash:\\n\\t\\t\\twarnings.warn(Warnings.W113.format(name=sourced_component))\\n\\tlogger.info(\"Finished initializing nlp object\")",
+          "bug_description": "Have logging calls use string formatting types (#12215)"
+        },
+        {
+          "faulty_code": "def build_tagger_model(\\n\\ttok2vec: Model[List[Doc], List[Floats2d]], nO: Optional[int] = None\\n) -> Model[List[Doc], List[Floats2d]]:\\n\\tt2v_width = tok2vec.get_dim(\"nO\") if tok2vec.has_dim(\"nO\") else None\\n\\toutput_layer = Softmax(nO, t2v_width, init_W=zero_init)\\n\\tsoftmax = with_array(output_layer)  \\n\\tmodel = chain(tok2vec, softmax)\\n\\tmodel.set_ref(\"tok2vec\", tok2vec)\\n\\tmodel.set_ref(\"softmax\", output_layer)\\n\\tmodel.set_ref(\"output_layer\", output_layer)\\n\\treturn model",
+          "fault_free_code": "def build_tagger_model(\\n\\ttok2vec: Model[List[Doc], List[Floats2d]], nO: Optional[int] = None, normalize=False\\n) -> Model[List[Doc], List[Floats2d]]:\\n\\tt2v_width = tok2vec.get_dim(\"nO\") if tok2vec.has_dim(\"nO\") else None\\n\\toutput_layer = Softmax_v2(\\n\\t\\tnO, t2v_width, init_W=zero_init, normalize_outputs=normalize\\n\\t)\\n\\tsoftmax = with_array(output_layer)  \\n\\tmodel = chain(tok2vec, softmax)\\n\\tmodel.set_ref(\"tok2vec\", tok2vec)\\n\\tmodel.set_ref(\"softmax\", output_layer)\\n\\tmodel.set_ref(\"output_layer\", output_layer)\\n\\treturn model",
+          "bug_description": "Tagger: use unnormalized probabilities for inference (#10197)\\n\\n\\nUsing unnormalized softmax avoids use of the relatively expensive exp function,\\nwhich can significantly speed up non-transformer models (e.g. I got a speedup\\nof 27% on a German tagging + parsing pipeline).\\n\\n\\nNormalization of probabilities is disabled by default to improve\\nperformance."
+        }
+      ]
+    },
+    "corruption - memory": {
+      "count": 13,
+      "projects": {
+        "numpy": 9,
+        "tensorflow": 3,
+        "pandas": 1
+      },
+      "fault_acronyms": {
+        "MIFS": 2,
+        "WVIV": 2,
+        "WPFL": 1,
+        "WVAV": 1,
+        "WVAE": 1,
+        "MIEB": 1,
+        "WFCD": 1,
+        "WFCS": 1,
+        "MPFC": 1,
+        "WALD": 1,
+        "WLEP": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def trace(self, offset=0, axis1=0, axis2=1, dtype=None, out=None):\\n\\t\\tm = self._mask\\n\\t\\tif m is nomask:\\n\\t\\t\\tresult = super(MaskedArray, self).trace(offset=offset, axis1=axis1,\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\taxis2=axis2, out=out)\\n\\t\\t\\treturn result.astype(dtype)\\n\\t\\telse:\\n\\t\\t\\tD = self.diagonal(offset=offset, axis1=axis1, axis2=axis2)\\n\\t\\t\\treturn D.astype(dtype).filled(0).sum(axis=None, out=out)\\n\\ttrace.__doc__ = ndarray.trace.__doc__",
+          "fault_free_code": "def trace(self, offset=0, axis1=0, axis2=1, dtype=None, out=None):\\n\\t\\tm = self._mask\\n\\t\\tif m is nomask:\\n\\t\\t\\tresult = super(MaskedArray, self).trace(offset=offset, axis1=axis1,\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\taxis2=axis2, out=out)\\n\\t\\t\\treturn result.astype(dtype)\\n\\t\\telse:\\n\\t\\t\\tD = self.diagonal(offset=offset, axis1=axis1, axis2=axis2)\\n\\t\\t\\treturn D.astype(dtype).filled(0).sum(axis=-1, out=out)\\n\\ttrace.__doc__ = ndarray.trace.__doc__",
+          "bug_description": "BUG: np.ma.trace gives the wrong result on ND arrays\\n\\nFixes #5560"
+        },
+        {
+          "faulty_code": "def gradient(f, *varargs, **kwargs):\\n\\tf = np.asanyarray(f)\\n\\tN = len(f.shape)  \\n\\taxes = kwargs.pop('axis', None)\\n\\tif axes is None:\\n\\t\\taxes = tuple(range(N))\\n\\tif isinstance(axes, int):\\n\\t\\taxes = (axes,)\\n\\tif not isinstance(axes, tuple):\\n\\t\\traise TypeError(\"A tuple of integers or a single integer is required\")\\n\\taxes = tuple(x + N if x < 0 else x for x in axes)\\n\\tif max(axes) >= N or min(axes) < 0:\\n\\t\\traise ValueError(\"'axis' entry is out of bounds\")\\n\\tif len(set(axes)) != len(axes):\\n\\t\\traise ValueError(\"duplicate value in 'axis'\")\\n\\tn = len(varargs)\\n\\tif n == 0:\\n\\t\\tdx = [1.0]*N\\n\\telif n == 1:\\n\\t\\tdx = [varargs[0]]*N\\n\\telif n == len(axes):\\n\\t\\tdx = list(varargs)\\n\\telse:\\n\\t\\traise SyntaxError(\\n\\t\\t\\t\"invalid number of arguments\")\\n\\tedge_order = kwargs.pop('edge_order', 1)\\n\\tif kwargs:\\n\\t\\traise TypeError('\"{}\" are not valid keyword arguments.'.format(\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t  '\", \"'.join(kwargs.keys())))\\n\\tif edge_order > 2:\\n\\t\\traise ValueError(\"'edge_order' greater than 2 not supported\")\\n\\toutvals = []\\n\\tslice1 = [slice(None)]*N\\n\\tslice2 = [slice(None)]*N\\n\\tslice3 = [slice(None)]*N\\n\\tslice4 = [slice(None)]*N\\n\\totype = f.dtype.char\\n\\tif otype not in ['f', 'd', 'F', 'D', 'm', 'M']:\\n\\t\\totype = 'd'\\n\\tif otype == 'M':\\n\\t\\totype = f.dtype.name.replace('datetime', 'timedelta')\\n\\telif otype == 'm':\\n\\t\\totype = f.dtype\\n\\tif f.dtype.char in [\"M\", \"m\"]:\\n\\t\\ty = f.view('int64')\\n\\telse:\\n\\t\\ty = f\\n\\tfor i, axis in enumerate(axes):\\n\\t\\tif y.shape[axis] < 2:\\n\\t\\t\\traise ValueError(\\n\\t\\t\\t\\t\"Shape of array too small to calculate a numerical gradient, \"\\n\\t\\t\\t\\t\"at least two elements are required.\")\\n\\t\\tif y.shape[axis] == 2 or edge_order == 1:\\n\\t\\t\\tout = np.empty_like(y, dtype=otype)\\n\\t\\t\\tslice1[axis] = slice(1, -1)\\n\\t\\t\\tslice2[axis] = slice(2, None)\\n\\t\\t\\tslice3[axis] = slice(None, -2)\\n\\t\\t\\tout[slice1] = (y[slice2] - y[slice3])/2.0\\n\\t\\t\\tslice1[axis] = 0\\n\\t\\t\\tslice2[axis] = 1\\n\\t\\t\\tslice3[axis] = 0\\n\\t\\t\\tout[slice1] = (y[slice2] - y[slice3])\\n\\t\\t\\tslice1[axis] = -1\\n\\t\\t\\tslice2[axis] = -1\\n\\t\\t\\tslice3[axis] = -2\\n\\t\\t\\tout[slice1] = (y[slice2] - y[slice3])\\n\\t\\telse:\\n\\t\\t\\tout = np.empty_like(y, dtype=otype)\\n\\t\\t\\tslice1[axis] = slice(1, -1)\\n\\t\\t\\tslice2[axis] = slice(2, None)\\n\\t\\t\\tslice3[axis] = slice(None, -2)\\n\\t\\t\\tout[slice1] = (y[slice2] - y[slice3])/2.0\\n\\t\\t\\tslice1[axis] = 0\\n\\t\\t\\tslice2[axis] = 0\\n\\t\\t\\tslice3[axis] = 1\\n\\t\\t\\tslice4[axis] = 2\\n\\t\\t\\tout[slice1] = -(3.0*y[slice2] - 4.0*y[slice3] + y[slice4])/2.0\\n\\t\\t\\tslice1[axis] = -1\\n\\t\\t\\tslice2[axis] = -1\\n\\t\\t\\tslice3[axis] = -2\\n\\t\\t\\tslice4[axis] = -3\\n\\t\\t\\tout[slice1] = (3.0*y[slice2] - 4.0*y[slice3] + y[slice4])/2.0\\n\\t\\tout /= dx[i]\\n\\t\\toutvals.append(out)\\n\\t\\tslice1[axis] = slice(None)\\n\\t\\tslice2[axis] = slice(None)\\n\\t\\tslice3[axis] = slice(None)\\n\\t\\tslice4[axis] = slice(None)\\n\\tif len(axes) == 1:\\n\\t\\treturn outvals[0]\\n\\telse:\\n\\t\\treturn outvals",
+          "fault_free_code": "def gradient(f, *varargs, **kwargs):\\n\\tf = np.asanyarray(f)\\n\\tN = len(f.shape)  \\n\\taxes = kwargs.pop('axis', None)\\n\\tif axes is None:\\n\\t\\taxes = tuple(range(N))\\n\\tif isinstance(axes, int):\\n\\t\\taxes = (axes,)\\n\\tif not isinstance(axes, tuple):\\n\\t\\traise TypeError(\"A tuple of integers or a single integer is required\")\\n\\taxes = tuple(x + N if x < 0 else x for x in axes)\\n\\tif max(axes) >= N or min(axes) < 0:\\n\\t\\traise ValueError(\"'axis' entry is out of bounds\")\\n\\tif len(set(axes)) != len(axes):\\n\\t\\traise ValueError(\"duplicate value in 'axis'\")\\n\\tn = len(varargs)\\n\\tif n == 0:\\n\\t\\tdx = [1.0]*N\\n\\telif n == 1:\\n\\t\\tdx = [varargs[0]]*N\\n\\telif n == len(axes):\\n\\t\\tdx = list(varargs)\\n\\telse:\\n\\t\\traise SyntaxError(\\n\\t\\t\\t\"invalid number of arguments\")\\n\\tif any([not np.isscalar(dxi) for dxi in dx]):\\n\\t\\traise ValueError(\"distances must be scalars\")\\n\\tedge_order = kwargs.pop('edge_order', 1)\\n\\tif kwargs:\\n\\t\\traise TypeError('\"{}\" are not valid keyword arguments.'.format(\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t  '\", \"'.join(kwargs.keys())))\\n\\tif edge_order > 2:\\n\\t\\traise ValueError(\"'edge_order' greater than 2 not supported\")\\n\\toutvals = []\\n\\tslice1 = [slice(None)]*N\\n\\tslice2 = [slice(None)]*N\\n\\tslice3 = [slice(None)]*N\\n\\tslice4 = [slice(None)]*N\\n\\totype = f.dtype.char\\n\\tif otype not in ['f', 'd', 'F', 'D', 'm', 'M']:\\n\\t\\totype = 'd'\\n\\tif otype == 'M':\\n\\t\\totype = f.dtype.name.replace('datetime', 'timedelta')\\n\\telif otype == 'm':\\n\\t\\totype = f.dtype\\n\\tif f.dtype.char in [\"M\", \"m\"]:\\n\\t\\ty = f.view('int64')\\n\\telse:\\n\\t\\ty = f\\n\\tfor i, axis in enumerate(axes):\\n\\t\\tif y.shape[axis] < 2:\\n\\t\\t\\traise ValueError(\\n\\t\\t\\t\\t\"Shape of array too small to calculate a numerical gradient, \"\\n\\t\\t\\t\\t\"at least two elements are required.\")\\n\\t\\tif y.shape[axis] == 2 or edge_order == 1:\\n\\t\\t\\tout = np.empty_like(y, dtype=otype)\\n\\t\\t\\tslice1[axis] = slice(1, -1)\\n\\t\\t\\tslice2[axis] = slice(2, None)\\n\\t\\t\\tslice3[axis] = slice(None, -2)\\n\\t\\t\\tout[slice1] = (y[slice2] - y[slice3])/2.0\\n\\t\\t\\tslice1[axis] = 0\\n\\t\\t\\tslice2[axis] = 1\\n\\t\\t\\tslice3[axis] = 0\\n\\t\\t\\tout[slice1] = (y[slice2] - y[slice3])\\n\\t\\t\\tslice1[axis] = -1\\n\\t\\t\\tslice2[axis] = -1\\n\\t\\t\\tslice3[axis] = -2\\n\\t\\t\\tout[slice1] = (y[slice2] - y[slice3])\\n\\t\\telse:\\n\\t\\t\\tout = np.empty_like(y, dtype=otype)\\n\\t\\t\\tslice1[axis] = slice(1, -1)\\n\\t\\t\\tslice2[axis] = slice(2, None)\\n\\t\\t\\tslice3[axis] = slice(None, -2)\\n\\t\\t\\tout[slice1] = (y[slice2] - y[slice3])/2.0\\n\\t\\t\\tslice1[axis] = 0\\n\\t\\t\\tslice2[axis] = 0\\n\\t\\t\\tslice3[axis] = 1\\n\\t\\t\\tslice4[axis] = 2\\n\\t\\t\\tout[slice1] = -(3.0*y[slice2] - 4.0*y[slice3] + y[slice4])/2.0\\n\\t\\t\\tslice1[axis] = -1\\n\\t\\t\\tslice2[axis] = -1\\n\\t\\t\\tslice3[axis] = -2\\n\\t\\t\\tslice4[axis] = -3\\n\\t\\t\\tout[slice1] = (3.0*y[slice2] - 4.0*y[slice3] + y[slice4])/2.0\\n\\t\\tout /= dx[i]\\n\\t\\toutvals.append(out)\\n\\t\\tslice1[axis] = slice(None)\\n\\t\\tslice2[axis] = slice(None)\\n\\t\\tslice3[axis] = slice(None)\\n\\t\\tslice4[axis] = slice(None)\\n\\tif len(axes) == 1:\\n\\t\\treturn outvals[0]\\n\\telse:\\n\\t\\treturn outvals",
+          "bug_description": "BUG: distance arg of np.gradient must be scalar, fix docstring\\n\\nFixups to docstring, and disallow non-scalars as the distance args to\\nnp.gradient.\\n\\nFixes #7548, fixes #6847"
+        },
+        {
+          "faulty_code": "def _formatArray(a, format_function, rank, max_line_len,\\n\\t\\t\\t\\t next_line_prefix, separator, edge_items, summary_insert):\\n\\tif rank == 0:\\n\\t\\treturn format_function(a[()]) + '\\n'\\n\\tif summary_insert and 2*edge_items < len(a):\\n\\t\\tleading_items = edge_items\\n\\t\\ttrailing_items = edge_items\\n\\t\\tsummary_insert1 = summary_insert\\n\\telse:\\n\\t\\tleading_items = 0\\n\\t\\ttrailing_items = len(a)\\n\\t\\tsummary_insert1 = \"\"\\n\\tif rank == 1:\\n\\t\\ts = \"\"\\n\\t\\tline = next_line_prefix\\n\\t\\tfor i in range(leading_items):\\n\\t\\t\\tword = format_function(a[i]) + separator\\n\\t\\t\\ts, line = _extendLine(s, line, word, max_line_len, next_line_prefix)\\n\\t\\tif summary_insert1:\\n\\t\\t\\ts, line = _extendLine(s, line, summary_insert1, max_line_len, next_line_prefix)\\n\\t\\tfor i in range(trailing_items, 1, -1):\\n\\t\\t\\tword = format_function(a[-i]) + separator\\n\\t\\t\\ts, line = _extendLine(s, line, word, max_line_len, next_line_prefix)\\n\\t\\tword = format_function(a[-1])\\n\\t\\ts, line = _extendLine(s, line, word, max_line_len, next_line_prefix)\\n\\t\\ts += line + \"]\\n\"\\n\\t\\ts = '[' + s[len(next_line_prefix):]\\n\\telse:\\n\\t\\ts = '['\\n\\t\\tsep = separator.rstrip()\\n\\t\\tfor i in range(leading_items):\\n\\t\\t\\tif i > 0:\\n\\t\\t\\t\\ts += next_line_prefix\\n\\t\\t\\ts += _formatArray(a[i], format_function, rank-1, max_line_len,\\n\\t\\t\\t\\t\\t\\t\\t  \" \" + next_line_prefix, separator, edge_items,\\n\\t\\t\\t\\t\\t\\t\\t  summary_insert)\\n\\t\\t\\ts = s.rstrip() + sep.rstrip() + '\\n'*max(rank-1, 1)\\n\\t\\tif summary_insert1:\\n\\t\\t\\ts += next_line_prefix + summary_insert1 + \"\\n\"\\n\\t\\tfor i in range(trailing_items, 1, -1):\\n\\t\\t\\tif leading_items or i != trailing_items:\\n\\t\\t\\t\\ts += next_line_prefix\\n\\t\\t\\ts += _formatArray(a[-i], format_function, rank-1, max_line_len,\\n\\t\\t\\t\\t\\t\\t\\t  \" \" + next_line_prefix, separator, edge_items,\\n\\t\\t\\t\\t\\t\\t\\t  summary_insert)\\n\\t\\t\\ts = s.rstrip() + sep.rstrip() + '\\n'*max(rank-1, 1)\\n\\t\\tif leading_items or trailing_items > 1:\\n\\t\\t\\ts += next_line_prefix\\n\\t\\ts += _formatArray(a[-1], format_function, rank-1, max_line_len,\\n\\t\\t\\t\\t\\t\\t  \" \" + next_line_prefix, separator, edge_items,\\n\\t\\t\\t\\t\\t\\t  summary_insert).rstrip()+']\\n'\\n\\treturn s\\nclass FloatFormat(object):",
+          "fault_free_code": "def _formatArray(a, format_function, rank, max_line_len,\\n\\t\\t\\t\\t next_line_prefix, separator, edge_items, summary_insert):\\n\\tif rank == 0:\\n\\t\\treturn format_function(a[()]) + '\\n'\\n\\tif summary_insert and 2*edge_items < len(a):\\n\\t\\tleading_items = edge_items\\n\\t\\ttrailing_items = edge_items\\n\\t\\tsummary_insert1 = summary_insert + separator\\n\\telse:\\n\\t\\tleading_items = 0\\n\\t\\ttrailing_items = len(a)\\n\\t\\tsummary_insert1 = \"\"\\n\\tif rank == 1:\\n\\t\\ts = \"\"\\n\\t\\tline = next_line_prefix\\n\\t\\tfor i in range(leading_items):\\n\\t\\t\\tword = format_function(a[i]) + separator\\n\\t\\t\\ts, line = _extendLine(s, line, word, max_line_len, next_line_prefix)\\n\\t\\tif summary_insert1:\\n\\t\\t\\ts, line = _extendLine(s, line, summary_insert1, max_line_len, next_line_prefix)\\n\\t\\tfor i in range(trailing_items, 1, -1):\\n\\t\\t\\tword = format_function(a[-i]) + separator\\n\\t\\t\\ts, line = _extendLine(s, line, word, max_line_len, next_line_prefix)\\n\\t\\tword = format_function(a[-1])\\n\\t\\ts, line = _extendLine(s, line, word, max_line_len, next_line_prefix)\\n\\t\\ts += line + \"]\\n\"\\n\\t\\ts = '[' + s[len(next_line_prefix):]\\n\\telse:\\n\\t\\ts = '['\\n\\t\\tsep = separator.rstrip()\\n\\t\\tfor i in range(leading_items):\\n\\t\\t\\tif i > 0:\\n\\t\\t\\t\\ts += next_line_prefix\\n\\t\\t\\ts += _formatArray(a[i], format_function, rank-1, max_line_len,\\n\\t\\t\\t\\t\\t\\t\\t  \" \" + next_line_prefix, separator, edge_items,\\n\\t\\t\\t\\t\\t\\t\\t  summary_insert)\\n\\t\\t\\ts = s.rstrip() + sep.rstrip() + '\\n'*max(rank-1, 1)\\n\\t\\tif summary_insert1:\\n\\t\\t\\ts += next_line_prefix + summary_insert1 + \"\\n\"\\n\\t\\tfor i in range(trailing_items, 1, -1):\\n\\t\\t\\tif leading_items or i != trailing_items:\\n\\t\\t\\t\\ts += next_line_prefix\\n\\t\\t\\ts += _formatArray(a[-i], format_function, rank-1, max_line_len,\\n\\t\\t\\t\\t\\t\\t\\t  \" \" + next_line_prefix, separator, edge_items,\\n\\t\\t\\t\\t\\t\\t\\t  summary_insert)\\n\\t\\t\\ts = s.rstrip() + sep.rstrip() + '\\n'*max(rank-1, 1)\\n\\t\\tif leading_items or trailing_items > 1:\\n\\t\\t\\ts += next_line_prefix\\n\\t\\ts += _formatArray(a[-1], format_function, rank-1, max_line_len,\\n\\t\\t\\t\\t\\t\\t  \" \" + next_line_prefix, separator, edge_items,\\n\\t\\t\\t\\t\\t\\t  summary_insert).rstrip()+']\\n'\\n\\treturn s\\nclass FloatFormat(object):",
+          "bug_description": "BUG: fix stray comma in _array2string\\n\\n_array2string unconditionally added a comma after the '...' that\\nare inserted for arrays exceeding the size threshold. Instead, add\\nthe separator character in _formatArray. Fixes #9777."
+        }
+      ]
+    },
+    "corruption - conversion": {
+      "count": 2,
+      "projects": {
+        "numpy": 2
+      },
+      "fault_acronyms": {
+        "WSUIT": 2
+      },
+      "examples": [
+        {
+          "faulty_code": "def count_nonzero(a, axis=None):\\n\\tif axis is None or axis == ():\\n\\t\\treturn multiarray.count_nonzero(a)\\n\\ta = asanyarray(a)\\n\\tif a.dtype == bool:\\n\\t\\treturn a.sum(axis=axis, dtype=np.intp)\\n\\tif issubdtype(a.dtype, np.number):\\n\\t\\treturn (a != 0).sum(axis=axis, dtype=np.intp)\\n\\tif (issubdtype(a.dtype, np.string_) or\\n\\t\\t\\tissubdtype(a.dtype, np.unicode_)):\\n\\t\\tnullstr = a.dtype.type('')\\n\\t\\treturn (a != nullstr).sum(axis=axis, dtype=np.intp)\\n\\taxis = asarray(normalize_axis_tuple(axis, a.ndim))\\n\\tcounts = np.apply_along_axis(multiarray.count_nonzero, axis[0], a)\\n\\tif axis.size == 1:\\n\\t\\treturn counts\\n\\telse:\\n\\t\\treturn counts.sum(axis=tuple(axis[1:] - (\\n\\t\\t\\taxis[1:] > axis[0])), dtype=np.intp)",
+          "fault_free_code": "def count_nonzero(a, axis=None):\\n\\tif axis is None or axis == ():\\n\\t\\treturn multiarray.count_nonzero(a)\\n\\ta = asanyarray(a)\\n\\tif a.dtype == bool:\\n\\t\\treturn a.sum(axis=axis, dtype=np.intp)\\n\\tif issubdtype(a.dtype, np.number):\\n\\t\\treturn (a != 0).sum(axis=axis, dtype=np.intp)\\n\\tif (issubdtype(a.dtype, np.string_) or\\n\\t\\t\\tissubdtype(a.dtype, np.unicode_)):\\n\\t\\tnullstr = a.dtype.type('')\\n\\t\\treturn (a != nullstr).sum(axis=axis, dtype=np.intp)\\n\\taxis = asarray(normalize_axis_tuple(axis, a.ndim))\\n\\tcounts = np.apply_along_axis(multiarray.count_nonzero, axis[0], a)\\n\\tif axis.size == 1:\\n\\t\\treturn counts.astype(np.intp, copy=False)\\n\\telse:\\n\\t\\treturn counts.sum(axis=tuple(axis[1:] - (\\n\\t\\t\\taxis[1:] > axis[0])), dtype=np.intp)",
+          "bug_description": "BUG: ensure consistent result dtype of count_nonzero\\n\\nThe slowpath using apply_along_axis for size 1 axis did not ensure that\\nthe dtype is intp like all other paths. This caused inconsistent dtypes\\non windows where the default integer type is int32.\\nCloses gh-9468"
+        },
+        {
+          "faulty_code": "def norm(x, ord=None, axis=None, keepdims=False):\\n\\tx = asarray(x)\\n\\tif not issubclass(x.dtype.type, inexact):\\n\\t\\tx = x.astype(float)\\n\\tif axis is None:\\n\\t\\tndim = x.ndim\\n\\t\\tif ((ord is None) or\\n\\t\\t\\t(ord in ('f', 'fro') and ndim == 2) or\\n\\t\\t\\t(ord == 2 and ndim == 1)):\\n\\t\\t\\tx = x.ravel(order='K')\\n\\t\\t\\tif isComplexType(x.dtype.type):\\n\\t\\t\\t\\tsqnorm = dot(x.real, x.real) + dot(x.imag, x.imag)\\n\\t\\t\\telse:\\n\\t\\t\\t\\tsqnorm = dot(x, x)\\n\\t\\t\\tret = sqrt(sqnorm)\\n\\t\\t\\tif keepdims:\\n\\t\\t\\t\\tret = ret.reshape(ndim*[1])\\n\\t\\t\\treturn ret\\n\\tnd = x.ndim\\n\\tif axis is None:\\n\\t\\taxis = tuple(range(nd))\\n\\telif not isinstance(axis, tuple):\\n\\t\\ttry:\\n\\t\\t\\taxis = int(axis)\\n\\t\\texcept:\\n\\t\\t\\traise TypeError(\"'axis' must be None, an integer or a tuple of integers\")\\n\\t\\taxis = (axis,)\\n\\tif len(axis) == 1:\\n\\t\\tif ord == Inf:\\n\\t\\t\\treturn abs(x).max(axis=axis, keepdims=keepdims)\\n\\t\\telif ord == -Inf:\\n\\t\\t\\treturn abs(x).min(axis=axis, keepdims=keepdims)\\n\\t\\telif ord == 0:\\n\\t\\t\\treturn (x != 0).astype(float).sum(axis=axis, keepdims=keepdims)\\n\\t\\telif ord == 1:\\n\\t\\t\\treturn add.reduce(abs(x), axis=axis, keepdims=keepdims)\\n\\t\\telif ord is None or ord == 2:\\n\\t\\t\\ts = (x.conj() * x).real\\n\\t\\t\\treturn sqrt(add.reduce(s, axis=axis, keepdims=keepdims))\\n\\t\\telse:\\n\\t\\t\\ttry:\\n\\t\\t\\t\\tord + 1\\n\\t\\t\\texcept TypeError:\\n\\t\\t\\t\\traise ValueError(\"Invalid norm order for vectors.\")\\n\\t\\t\\tif x.dtype.type is longdouble:\\n\\t\\t\\t\\tabsx = abs(x)\\n\\t\\t\\telse:\\n\\t\\t\\t\\tabsx = x if isComplexType(x.dtype.type) else asfarray(x)\\n\\t\\t\\t\\tif absx.dtype is x.dtype:\\n\\t\\t\\t\\t\\tabsx = abs(absx)\\n\\t\\t\\t\\telse:\\n\\t\\t\\t\\t\\tabs(absx, out=absx)\\n\\t\\t\\tabsx **= ord\\n\\t\\t\\treturn add.reduce(absx, axis=axis, keepdims=keepdims) ** (1.0 / ord)\\n\\telif len(axis) == 2:\\n\\t\\trow_axis, col_axis = axis\\n\\t\\tif row_axis < 0:\\n\\t\\t\\trow_axis += nd\\n\\t\\tif col_axis < 0:\\n\\t\\t\\tcol_axis += nd\\n\\t\\tif not (0 <= row_axis < nd and 0 <= col_axis < nd):\\n\\t\\t\\traise ValueError('Invalid axis %r for an array with shape %r' %\\n\\t\\t\\t\\t\\t\\t\\t (axis, x.shape))\\n\\t\\tif row_axis == col_axis:\\n\\t\\t\\traise ValueError('Duplicate axes given.')\\n\\t\\tif ord == 2:\\n\\t\\t\\tret =  _multi_svd_norm(x, row_axis, col_axis, amax)\\n\\t\\telif ord == -2:\\n\\t\\t\\tret = _multi_svd_norm(x, row_axis, col_axis, amin)\\n\\t\\telif ord == 1:\\n\\t\\t\\tif col_axis > row_axis:\\n\\t\\t\\t\\tcol_axis -= 1\\n\\t\\t\\tret = add.reduce(abs(x), axis=row_axis).max(axis=col_axis)\\n\\t\\telif ord == Inf:\\n\\t\\t\\tif row_axis > col_axis:\\n\\t\\t\\t\\trow_axis -= 1\\n\\t\\t\\tret = add.reduce(abs(x), axis=col_axis).max(axis=row_axis)\\n\\t\\telif ord == -1:\\n\\t\\t\\tif col_axis > row_axis:\\n\\t\\t\\t\\tcol_axis -= 1\\n\\t\\t\\tret = add.reduce(abs(x), axis=row_axis).min(axis=col_axis)\\n\\t\\telif ord == -Inf:\\n\\t\\t\\tif row_axis > col_axis:\\n\\t\\t\\t\\trow_axis -= 1\\n\\t\\t\\tret = add.reduce(abs(x), axis=col_axis).min(axis=row_axis)\\n\\t\\telif ord in [None, 'fro', 'f']:\\n\\t\\t\\tret = sqrt(add.reduce((x.conj() * x).real, axis=axis))\\n\\t\\telif ord == 'nuc':\\n\\t\\t\\tret = _multi_svd_norm(x, row_axis, col_axis, sum)\\n\\t\\telse:\\n\\t\\t\\traise ValueError(\"Invalid norm order for matrices.\")\\n\\t\\tif keepdims:\\n\\t\\t\\tret_shape = list(x.shape)\\n\\t\\t\\tret_shape[axis[0]] = 1\\n\\t\\t\\tret_shape[axis[1]] = 1\\n\\t\\t\\tret = ret.reshape(ret_shape)\\n\\t\\treturn ret\\n\\telse:\\n\\t\\traise ValueError(\"Improper number of dimensions to norm.\")",
+          "fault_free_code": "def norm(x, ord=None, axis=None, keepdims=False):\\n\\tx = asarray(x)\\n\\tif not issubclass(x.dtype.type, (inexact, object_)):\\n\\t\\tx = x.astype(float)\\n\\tif axis is None:\\n\\t\\tndim = x.ndim\\n\\t\\tif ((ord is None) or\\n\\t\\t\\t(ord in ('f', 'fro') and ndim == 2) or\\n\\t\\t\\t(ord == 2 and ndim == 1)):\\n\\t\\t\\tx = x.ravel(order='K')\\n\\t\\t\\tif isComplexType(x.dtype.type):\\n\\t\\t\\t\\tsqnorm = dot(x.real, x.real) + dot(x.imag, x.imag)\\n\\t\\t\\telse:\\n\\t\\t\\t\\tsqnorm = dot(x, x)\\n\\t\\t\\tret = sqrt(sqnorm)\\n\\t\\t\\tif keepdims:\\n\\t\\t\\t\\tret = ret.reshape(ndim*[1])\\n\\t\\t\\treturn ret\\n\\tnd = x.ndim\\n\\tif axis is None:\\n\\t\\taxis = tuple(range(nd))\\n\\telif not isinstance(axis, tuple):\\n\\t\\ttry:\\n\\t\\t\\taxis = int(axis)\\n\\t\\texcept:\\n\\t\\t\\traise TypeError(\"'axis' must be None, an integer or a tuple of integers\")\\n\\t\\taxis = (axis,)\\n\\tif len(axis) == 1:\\n\\t\\tif ord == Inf:\\n\\t\\t\\treturn abs(x).max(axis=axis, keepdims=keepdims)\\n\\t\\telif ord == -Inf:\\n\\t\\t\\treturn abs(x).min(axis=axis, keepdims=keepdims)\\n\\t\\telif ord == 0:\\n\\t\\t\\treturn (x != 0).astype(float).sum(axis=axis, keepdims=keepdims)\\n\\t\\telif ord == 1:\\n\\t\\t\\treturn add.reduce(abs(x), axis=axis, keepdims=keepdims)\\n\\t\\telif ord is None or ord == 2:\\n\\t\\t\\ts = (x.conj() * x).real\\n\\t\\t\\treturn sqrt(add.reduce(s, axis=axis, keepdims=keepdims))\\n\\t\\telse:\\n\\t\\t\\ttry:\\n\\t\\t\\t\\tord + 1\\n\\t\\t\\texcept TypeError:\\n\\t\\t\\t\\traise ValueError(\"Invalid norm order for vectors.\")\\n\\t\\t\\tif x.dtype.type is longdouble:\\n\\t\\t\\t\\tabsx = abs(x)\\n\\t\\t\\telse:\\n\\t\\t\\t\\tabsx = x if isComplexType(x.dtype.type) else asfarray(x)\\n\\t\\t\\t\\tif absx.dtype is x.dtype:\\n\\t\\t\\t\\t\\tabsx = abs(absx)\\n\\t\\t\\t\\telse:\\n\\t\\t\\t\\t\\tabs(absx, out=absx)\\n\\t\\t\\tabsx **= ord\\n\\t\\t\\treturn add.reduce(absx, axis=axis, keepdims=keepdims) ** (1.0 / ord)\\n\\telif len(axis) == 2:\\n\\t\\trow_axis, col_axis = axis\\n\\t\\tif row_axis < 0:\\n\\t\\t\\trow_axis += nd\\n\\t\\tif col_axis < 0:\\n\\t\\t\\tcol_axis += nd\\n\\t\\tif not (0 <= row_axis < nd and 0 <= col_axis < nd):\\n\\t\\t\\traise ValueError('Invalid axis %r for an array with shape %r' %\\n\\t\\t\\t\\t\\t\\t\\t (axis, x.shape))\\n\\t\\tif row_axis == col_axis:\\n\\t\\t\\traise ValueError('Duplicate axes given.')\\n\\t\\tif ord == 2:\\n\\t\\t\\tret =  _multi_svd_norm(x, row_axis, col_axis, amax)\\n\\t\\telif ord == -2:\\n\\t\\t\\tret = _multi_svd_norm(x, row_axis, col_axis, amin)\\n\\t\\telif ord == 1:\\n\\t\\t\\tif col_axis > row_axis:\\n\\t\\t\\t\\tcol_axis -= 1\\n\\t\\t\\tret = add.reduce(abs(x), axis=row_axis).max(axis=col_axis)\\n\\t\\telif ord == Inf:\\n\\t\\t\\tif row_axis > col_axis:\\n\\t\\t\\t\\trow_axis -= 1\\n\\t\\t\\tret = add.reduce(abs(x), axis=col_axis).max(axis=row_axis)\\n\\t\\telif ord == -1:\\n\\t\\t\\tif col_axis > row_axis:\\n\\t\\t\\t\\tcol_axis -= 1\\n\\t\\t\\tret = add.reduce(abs(x), axis=row_axis).min(axis=col_axis)\\n\\t\\telif ord == -Inf:\\n\\t\\t\\tif row_axis > col_axis:\\n\\t\\t\\t\\trow_axis -= 1\\n\\t\\t\\tret = add.reduce(abs(x), axis=col_axis).min(axis=row_axis)\\n\\t\\telif ord in [None, 'fro', 'f']:\\n\\t\\t\\tret = sqrt(add.reduce((x.conj() * x).real, axis=axis))\\n\\t\\telif ord == 'nuc':\\n\\t\\t\\tret = _multi_svd_norm(x, row_axis, col_axis, sum)\\n\\t\\telse:\\n\\t\\t\\traise ValueError(\"Invalid norm order for matrices.\")\\n\\t\\tif keepdims:\\n\\t\\t\\tret_shape = list(x.shape)\\n\\t\\t\\tret_shape[axis[0]] = 1\\n\\t\\t\\tret_shape[axis[1]] = 1\\n\\t\\t\\tret = ret.reshape(ret_shape)\\n\\t\\treturn ret\\n\\telse:\\n\\t\\traise ValueError(\"Improper number of dimensions to norm.\")",
+          "bug_description": "BUG: linalg.norm(): Don't convert object arrays to float\\n\\nThis fixes #7575 (Regression in linalg.norm() using dtype=object)."
+        }
+      ]
+    },
+    "corruption - silent": {
+      "count": 1,
+      "projects": {
+        "pandas": 1
+      },
+      "fault_acronyms": {
+        "MPFC": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def pyarrow_array_to_numpy_and_mask(arr, dtype):\\n\\tbuflist = arr.buffers()\\n\\tdata = np.frombuffer(buflist[1], dtype=dtype)[arr.offset : arr.offset + len(arr)]\\n\\tbitmask = buflist[0]\\n\\tif bitmask is not None:\\n\\t\\tmask = pyarrow.BooleanArray.from_buffers(\\n\\t\\t\\tpyarrow.bool_(), len(arr), [None, bitmask]\\n\\t\\t)\\n\\t\\tmask = np.asarray(mask)\\n\\telse:\\n\\t\\tmask = np.ones(len(arr), dtype=bool)\\n\\treturn data, mask",
+          "fault_free_code": "def pyarrow_array_to_numpy_and_mask(arr, dtype):\\n\\tbuflist = arr.buffers()\\n\\tdata = np.frombuffer(buflist[1], dtype=dtype)[arr.offset : arr.offset + len(arr)]\\n\\tbitmask = buflist[0]\\n\\tif bitmask is not None:\\n\\t\\tmask = pyarrow.BooleanArray.from_buffers(\\n\\t\\t\\tpyarrow.bool_(), len(arr), [None, bitmask], offset=arr.offset\\n\\t\\t)\\n\\t\\tmask = np.asarray(mask)\\n\\telse:\\n\\t\\tmask = np.ones(len(arr), dtype=bool)\\n\\treturn data, mask",
+          "bug_description": "BUG: fix array conversion from Arrow for slided array (#38539)"
+        }
+      ]
+    },
+    "concurrency - race condition": {
+      "count": 2,
+      "projects": {
+        "cpython": 2
+      },
+      "fault_acronyms": {
+        "MIA": 1,
+        "WPFV": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def _decrement_pending_calls(self):\\n\\t\\tself.num_pending_calls -= 1\\n\\t\\tif not self.num_pending_calls:\\n\\t\\t\\tself.event.set()",
+          "fault_free_code": "def _decrement_pending_calls(self):\\n\\t\\twith self.lock:\\n\\t\\t\\tself.num_pending_calls -= 1\\n\\t\\t\\tif not self.num_pending_calls:\\n\\t\\t\\t\\tself.event.set()",
+          "bug_description": "Issue #14406: Fix a race condition when using `concurrent.futures.wait(return_when=ALL_COMPLETED)`. Patch by Matt Joiner."
+        },
+        {
+          "faulty_code": "def _run_finalizers(minpriority=None):\\n\\t''\\n\\tif _finalizer_registry is None:\\n\\t\\treturn\\n\\tif minpriority is None:\\n\\t\\tf = lambda p : p[0][0] is not None\\n\\telse:\\n\\t\\tf = lambda p : p[0][0] is not None and p[0][0] >= minpriority\\n\\titems = [x for x in list(_finalizer_registry.items()) if f(x)]\\n\\titems.sort(reverse=True)\\n\\tfor key, finalizer in items:\\n\\t\\tsub_debug('calling %s', finalizer)\\n\\t\\ttry:\\n\\t\\t\\tfinalizer()\\n\\t\\texcept Exception:",
+          "fault_free_code": "def _run_finalizers(minpriority=None):\\n\\t''\\n\\tif _finalizer_registry is None:\\n\\t\\treturn\\n\\tif minpriority is None:\\n\\t\\tf = lambda p : p[0] is not None\\n\\telse:\\n\\t\\tf = lambda p : p[0] is not None and p[0] >= minpriority\\n\\tkeys = [key for key in list(_finalizer_registry) if f(key)]\\n\\tkeys.sort(reverse=True)\\n\\tfor key in keys:\\n\\t\\tfinalizer = _finalizer_registry.get(key)\\n\\t\\tif finalizer is not None:\\n\\t\\t\\tsub_debug('calling %s', finalizer)\\n\\t\\t\\ttry:\\n\\t\\t\\t\\tfinalizer()\\n\\t\\t\\texcept Exception:",
+          "bug_description": "bpo-24484: Avoid race condition in multiprocessing cleanup (#2159)\\n\\n\\nThe finalizer registry can be mutated while inspected by multiprocessing\\nat process exit."
+        }
+      ]
+    },
+    "concurrency - deadlock": {
+      "count": 4,
+      "projects": {
+        "cpython": 2,
+        "tensorflow": 2
+      },
+      "fault_acronyms": {
+        "MIES": 1,
+        "MIEB": 1,
+        "MFCE": 1,
+        "WFCD": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def get(self, block=1):\\n\\t\\tif block:\\n\\t\\t\\tself.esema.acquire()\\n\\t\\telif not self.esema.acquire(0):\\n\\t\\t\\traise Empty\\n\\t\\tself.mutex.acquire()\\n\\t\\twas_full = self._full()\\n\\t\\titem = self._get()\\n\\t\\tif was_full:\\n\\t\\t\\tself.fsema.release()\\n\\t\\tif not self._empty():\\n\\t\\t\\tself.esema.release()\\n\\t\\tself.mutex.release()\\n\\t\\treturn item",
+          "fault_free_code": "def get(self, block=1):\\n\\t\\tif block:\\n\\t\\t\\tself.esema.acquire()\\n\\t\\telif not self.esema.acquire(0):\\n\\t\\t\\traise Empty\\n\\t\\tself.mutex.acquire()\\n\\t\\trelease_esema = True\\n\\t\\ttry:\\n\\t\\t\\twas_full = self._full()\\n\\t\\t\\titem = self._get()\\n\\t\\t\\tif was_full:\\n\\t\\t\\t\\tself.fsema.release()\\n\\t\\t\\trelease_esema = not self._empty()\\n\\t\\tfinally:\\n\\t\\t\\tif release_esema:\\n\\t\\t\\t\\tself.esema.release()\\n\\t\\t\\tself.mutex.release()\\n\\t\\treturn item",
+          "bug_description": "Fix bug 544473 - \"Queue module can deadlock\". Use try/finally to ensure all Queue locks remain stable. Includes test case.  Bugfix candidate."
+        },
+        {
+          "faulty_code": "def put(self, item, block=1):\\n\\t\\tif block:\\n\\t\\t\\tself.fsema.acquire()\\n\\t\\telif not self.fsema.acquire(0):\\n\\t\\t\\traise Full\\n\\t\\tself.mutex.acquire()\\n\\t\\twas_empty = self._empty()\\n\\t\\tself._put(item)\\n\\t\\tif was_empty:\\n\\t\\t\\tself.esema.release()\\n\\t\\tif not self._full():\\n\\t\\t\\tself.fsema.release()\\n\\t\\tself.mutex.release()",
+          "fault_free_code": "def put(self, item, block=1):\\n\\t\\tif block:\\n\\t\\t\\tself.fsema.acquire()\\n\\t\\telif not self.fsema.acquire(0):\\n\\t\\t\\traise Full\\n\\t\\tself.mutex.acquire()\\n\\t\\trelease_fsema = True\\n\\t\\ttry:\\n\\t\\t\\twas_empty = self._empty()\\n\\t\\t\\tself._put(item)\\n\\t\\t\\tif was_empty:\\n\\t\\t\\t\\tself.esema.release()\\n\\t\\t\\trelease_fsema = not self._full()\\n\\t\\tfinally:\\n\\t\\t\\tif release_fsema:\\n\\t\\t\\t\\tself.fsema.release()\\n\\t\\t\\tself.mutex.release()",
+          "bug_description": "Fix bug 544473 - \"Queue module can deadlock\". Use try/finally to ensure all Queue locks remain stable. Includes test case.  Bugfix candidate."
+        },
+        {
+          "faulty_code": "def fit(self,\\n\\t\\t  x=None,\\n\\t\\t  y=None,\\n\\t\\t  batch_size=None,\\n\\t\\t  epochs=1,\\n\\t\\t  verbose=1,\\n\\t\\t  callbacks=None,\\n\\t\\t  validation_split=0.,\\n\\t\\t  validation_data=None,\\n\\t\\t  shuffle=True,\\n\\t\\t  class_weight=None,\\n\\t\\t  sample_weight=None,\\n\\t\\t  initial_epoch=0,\\n\\t\\t  steps_per_epoch=None,\\n\\t\\t  validation_steps=None,\\n\\t\\t  validation_batch_size=None,\\n\\t\\t  validation_freq=1,\\n\\t\\t  max_queue_size=10,\\n\\t\\t  workers=1,\\n\\t\\t  use_multiprocessing=False):\\n\\tbase_layer.keras_api_gauge.get_cell('fit').set(True)\\n\\tversion_utils.disallow_legacy_graph('Model', 'fit')\\n\\tself._assert_compile_was_called()\\n\\tself._check_call_args('fit')\\n\\t_disallow_inside_tf_function('fit')\\n\\tif validation_split:\\n\\t  (x, y, sample_weight), validation_data = (\\n\\t\\t  data_adapter.train_validation_split(\\n\\t\\t\\t  (x, y, sample_weight), validation_split=validation_split))\\n\\tif validation_data:\\n\\t  val_x, val_y, val_sample_weight = (\\n\\t\\t  data_adapter.unpack_x_y_sample_weight(validation_data))\\n\\tif self.distribute_strategy._should_use_with_coordinator:  \\n\\t  self._cluster_coordinator = cluster_coordinator.ClusterCoordinator(\\n\\t\\t  self.distribute_strategy)\\n\\twith self.distribute_strategy.scope(), \\\\n\\t\\t training_utils.RespectCompiledTrainableState(self):\\n\\t  data_handler = data_adapter.get_data_handler(\\n\\t\\t  x=x,\\n\\t\\t  y=y,\\n\\t\\t  sample_weight=sample_weight,\\n\\t\\t  batch_size=batch_size,\\n\\t\\t  steps_per_epoch=steps_per_epoch,\\n\\t\\t  initial_epoch=initial_epoch,\\n\\t\\t  epochs=epochs,\\n\\t\\t  shuffle=shuffle,\\n\\t\\t  class_weight=class_weight,\\n\\t\\t  max_queue_size=max_queue_size,\\n\\t\\t  workers=workers,\\n\\t\\t  use_multiprocessing=use_multiprocessing,\\n\\t\\t  model=self,\\n\\t\\t  steps_per_execution=self._steps_per_execution)\\n\\t  if not isinstance(callbacks, callbacks_module.CallbackList):\\n\\t\\tcallbacks = callbacks_module.CallbackList(\\n\\t\\t\\tcallbacks,\\n\\t\\t\\tadd_history=True,\\n\\t\\t\\tadd_progbar=verbose != 0,\\n\\t\\t\\tmodel=self,\\n\\t\\t\\tverbose=verbose,\\n\\t\\t\\tepochs=epochs,\\n\\t\\t\\tsteps=data_handler.inferred_steps)\\n\\t  self.stop_training = False\\n\\t  self.train_function = self.make_train_function()\\n\\t  self._train_counter.assign(0)\\n\\t  callbacks.on_train_begin()\\n\\t  training_logs = None\\n\\t  data_handler._initial_epoch = (  \\n\\t\\t  self._maybe_load_initial_epoch_from_ckpt(initial_epoch))\\n\\t  logs = None\\n\\t  for epoch, iterator in data_handler.enumerate_epochs():\\n\\t\\tself.reset_metrics()\\n\\t\\tcallbacks.on_epoch_begin(epoch)\\n\\t\\twith data_handler.catch_stop_iteration():\\n\\t\\t  for step in data_handler.steps():\\n\\t\\t\\twith trace.Trace(\\n\\t\\t\\t\\t'train',\\n\\t\\t\\t\\tepoch_num=epoch,\\n\\t\\t\\t\\tstep_num=step,\\n\\t\\t\\t\\tbatch_size=batch_size,\\n\\t\\t\\t\\t_r=1):\\n\\t\\t\\t  callbacks.on_train_batch_begin(step)\\n\\t\\t\\t  tmp_logs = self.train_function(iterator)\\n\\t\\t\\t  if data_handler.should_sync:\\n\\t\\t\\t\\tcontext.async_wait()\\n\\t\\t\\t  logs = tmp_logs  \\n\\t\\t\\t  end_step = step + data_handler.step_increment\\n\\t\\t\\t  callbacks.on_train_batch_end(end_step, logs)\\n\\t\\t\\t  if self.stop_training:\\n\\t\\t\\t\\tbreak\\n\\t\\tlogs = data_handler.resolve_logs(logs)\\n\\t\\tif logs is None:\\n\\t\\t  raise ValueError('Expect x to be a non-empty array or dataset.')\\n\\t\\tepoch_logs = copy.copy(logs)\\n\\t\\tif validation_data and self._should_eval(epoch, validation_freq):\\n\\t\\t  if getattr(self, '_eval_data_handler', None) is None:\\n\\t\\t\\tself._fit_frame = tf_inspect.currentframe()\\n\\t\\t\\tself._eval_data_handler = data_adapter.get_data_handler(\\n\\t\\t\\t\\tx=val_x,\\n\\t\\t\\t\\ty=val_y,\\n\\t\\t\\t\\tsample_weight=val_sample_weight,\\n\\t\\t\\t\\tbatch_size=validation_batch_size or batch_size,\\n\\t\\t\\t\\tsteps_per_epoch=validation_steps,\\n\\t\\t\\t\\tinitial_epoch=0,\\n\\t\\t\\t\\tepochs=1,\\n\\t\\t\\t\\tmax_queue_size=max_queue_size,\\n\\t\\t\\t\\tworkers=workers,\\n\\t\\t\\t\\tuse_multiprocessing=use_multiprocessing,\\n\\t\\t\\t\\tmodel=self,\\n\\t\\t\\t\\tsteps_per_execution=self._steps_per_execution)\\n\\t\\t  val_logs = self.evaluate(\\n\\t\\t\\t  x=val_x,\\n\\t\\t\\t  y=val_y,\\n\\t\\t\\t  sample_weight=val_sample_weight,\\n\\t\\t\\t  batch_size=validation_batch_size or batch_size,\\n\\t\\t\\t  steps=validation_steps,\\n\\t\\t\\t  callbacks=callbacks,\\n\\t\\t\\t  max_queue_size=max_queue_size,\\n\\t\\t\\t  workers=workers,\\n\\t\\t\\t  use_multiprocessing=use_multiprocessing,\\n\\t\\t\\t  return_dict=True)\\n\\t\\t  val_logs = {'val_' + name: val for name, val in val_logs.items()}\\n\\t\\t  epoch_logs.update(val_logs)\\n\\t\\tcallbacks.on_epoch_end(epoch, epoch_logs)\\n\\t\\ttraining_logs = epoch_logs\\n\\t\\tif self.stop_training:\\n\\t\\t  break\\n\\t  if getattr(self, '_eval_data_handler', None) is not None:\\n\\t\\tdel self._eval_data_handler\\n\\t\\tdel self._fit_frame\\n\\t  callbacks.on_train_end(logs=training_logs)\\n\\t  return self.history",
+          "fault_free_code": "def fit(self,\\n\\t\\t  x=None,\\n\\t\\t  y=None,\\n\\t\\t  batch_size=None,\\n\\t\\t  epochs=1,\\n\\t\\t  verbose=1,\\n\\t\\t  callbacks=None,\\n\\t\\t  validation_split=0.,\\n\\t\\t  validation_data=None,\\n\\t\\t  shuffle=True,\\n\\t\\t  class_weight=None,\\n\\t\\t  sample_weight=None,\\n\\t\\t  initial_epoch=0,\\n\\t\\t  steps_per_epoch=None,\\n\\t\\t  validation_steps=None,\\n\\t\\t  validation_batch_size=None,\\n\\t\\t  validation_freq=1,\\n\\t\\t  max_queue_size=10,\\n\\t\\t  workers=1,\\n\\t\\t  use_multiprocessing=False):\\n\\tbase_layer.keras_api_gauge.get_cell('fit').set(True)\\n\\tversion_utils.disallow_legacy_graph('Model', 'fit')\\n\\tself._assert_compile_was_called()\\n\\tself._check_call_args('fit')\\n\\t_disallow_inside_tf_function('fit')\\n\\tif validation_split:\\n\\t  (x, y, sample_weight), validation_data = (\\n\\t\\t  data_adapter.train_validation_split(\\n\\t\\t\\t  (x, y, sample_weight), validation_split=validation_split))\\n\\tif validation_data:\\n\\t  val_x, val_y, val_sample_weight = (\\n\\t\\t  data_adapter.unpack_x_y_sample_weight(validation_data))\\n\\tif self.distribute_strategy._should_use_with_coordinator:  \\n\\t  self._cluster_coordinator = cluster_coordinator.ClusterCoordinator(\\n\\t\\t  self.distribute_strategy)\\n\\twith self.distribute_strategy.scope(), \\\\n\\t\\t training_utils.RespectCompiledTrainableState(self):\\n\\t  data_handler = data_adapter.get_data_handler(\\n\\t\\t  x=x,\\n\\t\\t  y=y,\\n\\t\\t  sample_weight=sample_weight,\\n\\t\\t  batch_size=batch_size,\\n\\t\\t  steps_per_epoch=steps_per_epoch,\\n\\t\\t  initial_epoch=initial_epoch,\\n\\t\\t  epochs=epochs,\\n\\t\\t  shuffle=shuffle,\\n\\t\\t  class_weight=class_weight,\\n\\t\\t  max_queue_size=max_queue_size,\\n\\t\\t  workers=workers,\\n\\t\\t  use_multiprocessing=use_multiprocessing,\\n\\t\\t  model=self,\\n\\t\\t  steps_per_execution=self._steps_per_execution)\\n\\t  if not isinstance(callbacks, callbacks_module.CallbackList):\\n\\t\\tcallbacks = callbacks_module.CallbackList(\\n\\t\\t\\tcallbacks,\\n\\t\\t\\tadd_history=True,\\n\\t\\t\\tadd_progbar=verbose != 0,\\n\\t\\t\\tmodel=self,\\n\\t\\t\\tverbose=verbose,\\n\\t\\t\\tepochs=epochs,\\n\\t\\t\\tsteps=data_handler.inferred_steps)\\n\\t  self.stop_training = False\\n\\t  self.train_function = self.make_train_function()\\n\\t  self._train_counter.assign(0)\\n\\t  callbacks.on_train_begin()\\n\\t  training_logs = None\\n\\t  data_handler._initial_epoch = (  \\n\\t\\t  self._maybe_load_initial_epoch_from_ckpt(initial_epoch))\\n\\t  logs = None\\n\\t  for epoch, iterator in data_handler.enumerate_epochs():\\n\\t\\tself.reset_metrics()\\n\\t\\tcallbacks.on_epoch_begin(epoch)\\n\\t\\twith data_handler.catch_stop_iteration():\\n\\t\\t  for step in data_handler.steps():\\n\\t\\t\\twith trace.Trace(\\n\\t\\t\\t\\t'train',\\n\\t\\t\\t\\tepoch_num=epoch,\\n\\t\\t\\t\\tstep_num=step,\\n\\t\\t\\t\\tbatch_size=batch_size,\\n\\t\\t\\t\\t_r=1):\\n\\t\\t\\t  callbacks.on_train_batch_begin(step)\\n\\t\\t\\t  tmp_logs = self.train_function(iterator)\\n\\t\\t\\t  if data_handler.should_sync:\\n\\t\\t\\t\\tcontext.async_wait()\\n\\t\\t\\t  logs = tmp_logs  \\n\\t\\t\\t  end_step = step + data_handler.step_increment\\n\\t\\t\\t  callbacks.on_train_batch_end(end_step, logs)\\n\\t\\t\\t  if self.stop_training:\\n\\t\\t\\t\\tbreak\\n\\t\\tlogs = data_handler.resolve_logs(logs)\\n\\t\\tif logs is None:\\n\\t\\t  raise ValueError('Expect x to be a non-empty array or dataset.')\\n\\t\\tepoch_logs = copy.copy(logs)\\n\\t\\tif validation_data and self._should_eval(epoch, validation_freq):\\n\\t\\t  if getattr(self, '_eval_data_handler', None) is None:\\n\\t\\t\\tself._eval_data_handler = data_adapter.get_data_handler(\\n\\t\\t\\t\\tx=val_x,\\n\\t\\t\\t\\ty=val_y,\\n\\t\\t\\t\\tsample_weight=val_sample_weight,\\n\\t\\t\\t\\tbatch_size=validation_batch_size or batch_size,\\n\\t\\t\\t\\tsteps_per_epoch=validation_steps,\\n\\t\\t\\t\\tinitial_epoch=0,\\n\\t\\t\\t\\tepochs=1,\\n\\t\\t\\t\\tmax_queue_size=max_queue_size,\\n\\t\\t\\t\\tworkers=workers,\\n\\t\\t\\t\\tuse_multiprocessing=use_multiprocessing,\\n\\t\\t\\t\\tmodel=self,\\n\\t\\t\\t\\tsteps_per_execution=self._steps_per_execution)\\n\\t\\t  val_logs = self.evaluate(\\n\\t\\t\\t  x=val_x,\\n\\t\\t\\t  y=val_y,\\n\\t\\t\\t  sample_weight=val_sample_weight,\\n\\t\\t\\t  batch_size=validation_batch_size or batch_size,\\n\\t\\t\\t  steps=validation_steps,\\n\\t\\t\\t  callbacks=callbacks,\\n\\t\\t\\t  max_queue_size=max_queue_size,\\n\\t\\t\\t  workers=workers,\\n\\t\\t\\t  use_multiprocessing=use_multiprocessing,\\n\\t\\t\\t  return_dict=True,\\n\\t\\t\\t  _use_cached_eval_dataset=True)\\n\\t\\t  val_logs = {'val_' + name: val for name, val in val_logs.items()}\\n\\t\\t  epoch_logs.update(val_logs)\\n\\t\\tcallbacks.on_epoch_end(epoch, epoch_logs)\\n\\t\\ttraining_logs = epoch_logs\\n\\t\\tif self.stop_training:\\n\\t\\t  break\\n\\t  if getattr(self, '_eval_data_handler', None) is not None:\\n\\t\\tdel self._eval_data_handler\\n\\t  callbacks.on_train_end(logs=training_logs)\\n\\t  return self.history",
+          "bug_description": "Fix bug that caused calls to model.evaluate inside a fit callback to hit a cached evaluation dataset."
+        }
+      ]
+    },
+    "concurrency - atomic ": {
+      "count": 1,
+      "projects": {
+        "cpython": 1
+      },
+      "fault_acronyms": {
+        "MFC": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def __iter__(self):\\n\\t\\tfor key in self._data:\\n\\t\\t\\tyield self.decodekey(key)",
+          "fault_free_code": "def __iter__(self):\\n\\t\\tkeys = list(self._data)\\n\\t\\tfor key in keys:\\n\\t\\t\\tyield self.decodekey(key)",
+          "bug_description": "bpo-30441: Fix bug when modifying os.environ while iterating over it (#2409)"
+        }
+      ]
+    },
+    "CWE-703: Improper Check or Handling of Exceptional Conditions": {
+      "count": 1,
+      "projects": {
+        "scikit-learn": 1
+      },
+      "fault_acronyms": {
+        "MIFS": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def transform(self, y):\\n\\t\\tcheck_is_fitted(self, 'classes_')\\n\\t\\ty = column_or_1d(y, warn=True)\\n\\t\\tclasses = np.unique(y)\\n\\t\\tif len(np.intersect1d(classes, self.classes_)) < len(classes):\\n\\t\\t\\tdiff = np.setdiff1d(classes, self.classes_)\\n\\t\\t\\traise ValueError(\\n\\t\\t\\t\\t\\t\"y contains previously unseen labels: %s\" % str(diff))\\n\\t\\treturn np.searchsorted(self.classes_, y)",
+          "fault_free_code": "def transform(self, y):\\n\\t\\tcheck_is_fitted(self, 'classes_')\\n\\t\\ty = column_or_1d(y, warn=True)\\n\\t\\tif _num_samples(y) == 0:\\n\\t\\t\\treturn np.array([])\\n\\t\\tclasses = np.unique(y)\\n\\t\\tif len(np.intersect1d(classes, self.classes_)) < len(classes):\\n\\t\\t\\tdiff = np.setdiff1d(classes, self.classes_)\\n\\t\\t\\traise ValueError(\\n\\t\\t\\t\\t\\t\"y contains previously unseen labels: %s\" % str(diff))\\n\\t\\treturn np.searchsorted(self.classes_, y)",
+          "bug_description": "[MRG+1] Fixes #10458: Make LabelEncoder work with empty list/array (#10508)"
+        }
+      ]
+    },
+    "semantic": {
+      "count": 25,
+      "projects": {
+        "tensorflow": 25
+      },
+      "fault_acronyms": {
+        "WSUIT": 4,
+        "MIEB": 4,
+        "WFCD": 2,
+        "WALL": 2,
+        "MIFS": 2,
+        "WRV": 1,
+        "WFCS": 1,
+        "MIES": 1,
+        "MLPL": 1,
+        "WALD": 1,
+        "WVIV": 1,
+        "MLPS": 1,
+        "MLAA": 1,
+        "WPFO": 1,
+        "WLEC": 1,
+        "WPFV": 1
+      },
+      "examples": [
+        {
+          "faulty_code": "def _grad(op, grad):\\n\\tfft_length = op.inputs[1]\\n\\tinput_shape = _array_ops.shape(op.inputs[0])\\n\\tis_even = _math_ops.cast(1 - (fft_length[-1] % 2), _dtypes.complex64)",
+          "fault_free_code": "def _grad(op, grad):\\n\\tfft_length = op.inputs[1]\\n\\tcomplex_dtype = grad.dtype\\n\\treal_dtype = complex_dtype.real_dtype\\n\\tinput_shape = _array_ops.shape(op.inputs[0])\\n\\tis_even = _math_ops.cast(1 - (fft_length[-1] % 2), complex_dtype)",
+          "bug_description": "Add complex128 support to RFFT, RFFT2D, RFFT3D, IRFFT, IRFFT2D, and IRFFT3D.\\n\\nFinishes support requested in:\\n- #10749\\n- #17332"
+        },
+        {
+          "faulty_code": "def _RemoveExternalControlEdges(self, op):\\n\\twhile_ctxt = self.GetWhileContext()\\n\\tif while_ctxt is None:\\n\\t  internal_control_inputs = op.control_inputs\\n\\telse:\\n\\t  internal_control_inputs = []\\n\\t  for x in op.control_inputs:\\n\\t\\tctxt = util.GetOutputContext(x)\\n\\t\\tif ctxt is not None and ctxt.GetWhileContext() == while_ctxt:\\n\\t\\t  internal_control_inputs.append(x)\\n\\tif len(internal_control_inputs) != len(op.control_inputs):\\n\\t  op._remove_all_control_inputs()\\n\\t  op._add_control_inputs(internal_control_inputs)\\n\\treturn internal_control_inputs",
+          "fault_free_code": "def _RemoveExternalControlEdges(self, op):\\n\\twhile_ctxt = self.GetWhileContext()\\n\\tif while_ctxt is None:\\n\\t  internal_control_inputs = op.control_inputs\\n\\telse:\\n\\t  internal_control_inputs = []\\n\\t  for x in op.control_inputs:\\n\\t\\tctxt = util.GetOutputContext(x)\\n\\t\\tif ctxt is not None and ctxt.GetWhileContext() == while_ctxt:\\n\\t\\t  internal_control_inputs.append(x)\\n\\texternal_control_inputs = []\\n\\tif len(internal_control_inputs) != len(op.control_inputs):\\n\\t  external_control_inputs = list(set(op.control_inputs)\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t - set(internal_control_inputs))\\n\\t  op._remove_all_control_inputs()\\n\\t  op._add_control_inputs(internal_control_inputs)\\n\\treturn internal_control_inputs, external_control_inputs",
+          "bug_description": "Fixes issue where external control dependencies in while loops are dropped.\\n\\nFixes #15891"
+        },
+        {
+          "faulty_code": "def _mask_matrix(length):\\n\\t  a = _array_ops.tile(\\n\\t\\t  _array_ops.expand_dims(_math_ops.range(length), 0), (length, 1))\\n\\t  b = _array_ops.transpose(a, [1, 0])\\n\\t  return _math_ops.exp(\\n\\t\\t  -2j * np.pi * _math_ops.cast(a * b, _dtypes.complex64) /\\n\\t\\t  _math_ops.cast(length, _dtypes.complex64))",
+          "fault_free_code": "def _mask_matrix(length):\\n\\t  a = _array_ops.tile(\\n\\t\\t  _array_ops.expand_dims(_math_ops.range(length), 0), (length, 1))\\n\\t  b = _array_ops.transpose(a, [1, 0])\\n\\t  return _math_ops.exp(\\n\\t\\t  -2j * np.pi * _math_ops.cast(a * b, complex_dtype) /\\n\\t\\t  _math_ops.cast(length, complex_dtype))",
+          "bug_description": "Add complex128 support to RFFT, RFFT2D, RFFT3D, IRFFT, IRFFT2D, and IRFFT3D.\\n\\nFinishes support requested in:\\n- #10749\\n- #17332"
+        }
+      ]
+    }
+  }
+}
