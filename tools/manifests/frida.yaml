@@ -1,0 +1,185 @@
+name: frida
+version: "16.1.8"
+category: mobile_security
+description: "Dynamic instrumentation toolkit for developers, reverse-engineers, and security researchers"
+
+capabilities:
+  - runtime_instrumentation
+  - function_hooking
+  - method_tracing
+  - ssl_pinning_bypass
+  - root_detection_bypass
+  - memory_manipulation
+  - api_hooking
+  - code_injection
+  - javascript_scripting
+  - python_binding
+  - ios_android_support
+  - process_spawning
+  - runtime_analysis
+
+target_compatibility:
+  os: [linux, macos, windows, android, ios]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+"]
+    macos: ["macOS 10.13+"]
+    windows: ["Windows 10+"]
+    android: ["Android 5.0+"]
+    ios: ["iOS 10+"]
+  architecture: [x86_64, i686, arm, arm64]
+
+commands:
+  - name: list_processes
+    description: "List running processes on device"
+    template: "frida-ps -U"
+    parameters: {}
+    example: "frida-ps -U"
+    
+  - name: list_apps
+    description: "List installed applications"
+    template: "frida-ps -Uai"
+    parameters: {}
+    example: "frida-ps -Uai"
+    
+  - name: spawn_app
+    description: "Spawn app with instrumentation"
+    template: "frida -U -f {package} -l {script}"
+    parameters:
+      package: {type: str, required: true}
+      script: {type: path, required: true}
+    example: "frida -U -f com.example.app -l hook.js"
+    
+  - name: attach_process
+    description: "Attach to running process"
+    template: "frida -U -n {process_name} -l {script}"
+    parameters:
+      process_name: {type: str, required: true}
+      script: {type: path, required: true}
+    example: "frida -U -n com.example.app -l hook.js"
+    
+  - name: attach_pid
+    description: "Attach to process by PID"
+    template: "frida -U -p {pid} -l {script}"
+    parameters:
+      pid: {type: int, required: true}
+      script: {type: path, required: true}
+    example: "frida -U -p 1234 -l hook.js"
+    
+  - name: trace_natives
+    description: "Trace native function calls"
+    template: "frida-trace -U -i '{function_pattern}' {package}"
+    parameters:
+      function_pattern: {type: str, required: true}
+      package: {type: str, required: true}
+    example: "frida-trace -U -i 'open*' com.example.app"
+    
+  - name: trace_java
+    description: "Trace Java methods"
+    template: "frida-trace -U -j '{class_pattern}!{method_pattern}' {package}"
+    parameters:
+      class_pattern: {type: str, required: true}
+      method_pattern: {type: str, required: true}
+      package: {type: str, required: true}
+    example: "frida-trace -U -j 'java.net.URL!*' com.example.app"
+    
+  - name: trace_objc
+    description: "Trace Objective-C methods (iOS)"
+    template: "frida-trace -U -m '{class_pattern}[{method_pattern}]' {app_name}"
+    parameters:
+      class_pattern: {type: str, required: true}
+      method_pattern: {type: str, required: true}
+      app_name: {type: str, required: true}
+    example: "frida-trace -U -m '*[* *HTTP*]' Safari"
+    
+  - name: repl_mode
+    description: "Interactive REPL session"
+    template: "frida -U {package}"
+    parameters:
+      package: {type: str, required: true}
+    example: "frida -U com.example.app"
+    
+  - name: remote_frida
+    description: "Connect to remote frida-server"
+    template: "frida -H {host}:{port} -f {package} -l {script}"
+    parameters:
+      host: {type: ip, required: true}
+      port: {type: int, default: 27042}
+      package: {type: str, required: true}
+      script: {type: path, required: true}
+    example: "frida -H 10.10.10.10:27042 -f com.app -l hook.js"
+    
+  - name: fridump
+    description: "Dump memory from application"
+    template: "fridump -U -s {package}"
+    parameters:
+      package: {type: str, required: true}
+    example: "fridump -U -s com.example.app"
+    
+  - name: python_script
+    description: "Run Python script with Frida"
+    template: "python3 {script} {package}"
+    parameters:
+      script: {type: path, required: true}
+      package: {type: str, required: true}
+    example: "python3 hook.py com.example.app"
+
+output_format:
+  type: interactive
+  log_format: text
+  supports_json: false
+
+requires_auth: false
+requires_root: false
+ports_required: [27042]
+
+supersedes: []
+complements: [objection, apktool, jadx, hopper]
+
+known_issues:
+  - issue: "Requires frida-server running on target device"
+    impact: high
+    workaround: "Install frida-server on rooted Android or jailbroken iOS"
+  - issue: "Some apps detect Frida and refuse to run"
+    impact: medium
+    workaround: "Use Frida with anti-detection patches or magisk hide"
+  - issue: "SSL pinning bypass may not work on all apps"
+    impact: medium
+    workaround: "Customize SSL pinning bypass script for specific app"
+  - issue: "iOS requires jailbreak for full functionality"
+    impact: high
+    workaround: "Use jailbroken device or corellium virtual iOS"
+
+success_indicators:
+  - "Process spawned"
+  - "Attached"
+  - "Script loaded"
+  - "Hooking"
+  - "\\[.*\\] -->.*"
+  - "Interceptor"
+
+failure_indicators:
+  - "Failed to spawn"
+  - "Unable to attach"
+  - "Device not found"
+  - "Process not found"
+  - "Connection refused"
+  - "Script error"
+
+installation:
+  pip: "pip install frida-tools"
+  npm: "npm install -g frida"
+  download: "Download frida-server from GitHub releases"
+  verify: "frida --version"
+  post_install:
+    - "For Android: Download frida-server for your arch, push to device, run as root"
+    - "For iOS: Install frida on jailbroken device via Cydia"
+    - "Test device connection: frida-ps -U"
+    - "Install objection: pip install objection"
+
+effectiveness_baseline:
+  success_rate: 0.85
+  avg_execution_time: 5
+  false_positive_rate: 0.05
+  resource_usage: medium
+  reliability: high
+  notes: "Essential for mobile app dynamic analysis; requires root/jailbreak for full power"

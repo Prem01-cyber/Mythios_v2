@@ -1,0 +1,220 @@
+name: shodan
+version: "1.31.0"
+category: osint_reconnaissance
+description: "Internet-wide search engine CLI for discovering exposed devices, services, and vulnerabilities globally"
+
+capabilities:
+  - internet_wide_scanning
+  - service_enumeration
+  - vulnerability_discovery
+  - banner_grabbing
+  - geolocation_search
+  - port_scanning_data
+  - ssl_certificate_search
+  - domain_enumeration
+  - network_range_search
+  - historical_data
+  - honeypot_detection
+  - iot_device_discovery
+  - industrial_control_systems
+  - webcam_discovery
+  - api_access
+
+target_compatibility:
+  os: [linux, windows, macos]
+  versions:
+    linux: ["Ubuntu 16.04+", "Debian 9+", "Kali 2018+", "CentOS 7+"]
+    windows: ["Windows 10+", "Windows Server 2016+"]
+    macos: ["macOS 10.12+"]
+  architecture: [x86_64, i686, arm64]
+
+commands:
+  - name: init_api
+    description: "Initialize Shodan API key"
+    template: "shodan init {api_key}"
+    parameters:
+      api_key: {type: str, required: true, sensitive: true}
+    example: "shodan init YOUR_API_KEY_HERE"
+    
+  - name: search_basic
+    description: "Basic search query"
+    template: "shodan search '{query}' --limit {limit}"
+    parameters:
+      query: {type: str, required: true}
+      limit: {type: int, default: 100}
+    example: "shodan search 'apache' --limit 100"
+    
+  - name: search_with_facets
+    description: "Search with facet analysis"
+    template: "shodan search '{query}' --facets {facets} --limit {limit}"
+    parameters:
+      query: {type: str, required: true}
+      facets: {type: str, required: true, description: "Comma-separated facets"}
+      limit: {type: int, default: 100}
+    example: "shodan search 'port:22' --facets country,org --limit 100"
+    
+  - name: search_country
+    description: "Search in specific country"
+    template: "shodan search '{query} country:{country_code}' --limit {limit}"
+    parameters:
+      query: {type: str, required: true}
+      country_code: {type: str, required: true, description: "2-letter country code"}
+      limit: {type: int, default: 100}
+    example: "shodan search 'apache country:US' --limit 100"
+    
+  - name: host_lookup
+    description: "Look up specific host information"
+    template: "shodan host {target}"
+    parameters:
+      target: {type: ip, required: true}
+    example: "shodan host 8.8.8.8"
+    
+  - name: host_history
+    description: "Historical data for host"
+    template: "shodan host --history {target}"
+    parameters:
+      target: {type: ip, required: true}
+    example: "shodan host --history 8.8.8.8"
+    
+  - name: domain_info
+    description: "Get information about a domain"
+    template: "shodan domain {domain}"
+    parameters:
+      domain: {type: str, required: true}
+    example: "shodan domain example.com"
+    
+  - name: myip
+    description: "Get your public IP address"
+    template: "shodan myip"
+    parameters: {}
+    example: "shodan myip"
+    
+  - name: count_results
+    description: "Count search results without fetching data"
+    template: "shodan count '{query}'"
+    parameters:
+      query: {type: str, required: true}
+    example: "shodan count 'port:3389 country:US'"
+    
+  - name: download_data
+    description: "Download search results to file"
+    template: "shodan download --limit {limit} {output_file} '{query}'"
+    parameters:
+      output_file: {type: path, required: true}
+      query: {type: str, required: true}
+      limit: {type: int, default: 1000}
+    example: "shodan download --limit 1000 results.json.gz 'apache'"
+    
+  - name: parse_downloaded
+    description: "Parse downloaded Shodan data"
+    template: "shodan parse --fields {fields} {input_file}"
+    parameters:
+      input_file: {type: path, required: true}
+      fields: {type: str, default: "ip_str,port,org,hostnames"}
+    example: "shodan parse --fields ip_str,port,org results.json.gz"
+    
+  - name: stats
+    description: "Provide summary statistics for search"
+    template: "shodan stats --facets {facets} '{query}'"
+    parameters:
+      query: {type: str, required: true}
+      facets: {type: str, required: true}
+    example: "shodan stats --facets country,org 'port:22'"
+    
+  - name: honeyscore
+    description: "Check if IP is likely a honeypot"
+    template: "shodan honeyscore {target}"
+    parameters:
+      target: {type: ip, required: true}
+    example: "shodan honeyscore 1.2.3.4"
+    
+  - name: scan_submit
+    description: "Submit IP for scanning (requires paid plan)"
+    template: "shodan scan submit {targets}"
+    parameters:
+      targets: {type: str, required: true, description: "IP or comma-separated IPs"}
+    example: "shodan scan submit 1.2.3.4,5.6.7.8"
+    
+  - name: scan_status
+    description: "Check scan status"
+    template: "shodan scan status {scan_id}"
+    parameters:
+      scan_id: {type: str, required: true}
+    example: "shodan scan status abc123def456"
+    
+  - name: alert_list
+    description: "List configured network alerts"
+    template: "shodan alert list"
+    parameters: {}
+    example: "shodan alert list"
+    
+  - name: org_info
+    description: "Information about your organization"
+    template: "shodan organization"
+    parameters: {}
+    example: "shodan organization"
+
+output_format:
+  type: json
+  log_format: text
+  supports_json: true
+  download_format: json.gz
+
+requires_auth: true
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [amass, theharvester, censys]
+
+known_issues:
+  - issue: "Requires API key (free tier limited to 100 results)"
+    impact: medium
+    workaround: "Purchase paid plan for unlimited searches"
+  - issue: "Data may be outdated (not real-time scanning)"
+    impact: medium
+    workaround: "Use scan submit for fresh data (paid feature)"
+  - issue: "Rate limiting on free tier"
+    impact: low
+    workaround: "Space out queries or upgrade to paid tier"
+  - issue: "Some countries/regions have limited coverage"
+    impact: low
+    workaround: "Use multiple OSINT sources for comprehensive coverage"
+
+success_indicators:
+  - "IP: [0-9.]+"
+  - "Port: [0-9]+"
+  - "Organization: .+"
+  - "Hostnames: \\[.+\\]"
+  - "City: .+"
+  - "Country: .+"
+  - "Results: [0-9]+"
+  - "Download complete"
+
+failure_indicators:
+  - "API key not initialized"
+  - "Invalid API key"
+  - "Rate limit exceeded"
+  - "No results found"
+  - "Connection error"
+  - "Query quota exceeded"
+  - "Access denied"
+  - "Invalid query syntax"
+
+installation:
+  pip: "pip install shodan"
+  apt: "apt install python3-shodan"
+  verify: "shodan version"
+  post_install:
+    - "Get API key from https://account.shodan.io/"
+    - "Run: shodan init YOUR_API_KEY"
+    - "Test: shodan myip"
+    - "Check info: shodan info"
+
+effectiveness_baseline:
+  success_rate: 0.95
+  avg_execution_time: 5
+  false_positive_rate: 0.05
+  resource_usage: low
+  reliability: high
+  notes: "Highly reliable for internet-wide reconnaissance; success depends on query quality and API key tier"

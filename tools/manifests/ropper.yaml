@@ -1,0 +1,183 @@
+name: ropper
+version: "1.13.8"
+category: exploit_development
+description: "Tool for finding ROP gadgets, creating ROP chains, and analyzing binary files for exploitation"
+
+capabilities:
+  - rop_gadget_search
+  - jop_gadget_search
+  - syscall_gadget_search
+  - rop_chain_generation
+  - semantic_search
+  - gadget_filtering
+  - multi_architecture_support
+  - instruction_search
+  - opcode_search
+  - bad_byte_filtering
+  - interactive_mode
+  - script_mode
+
+target_compatibility:
+  os: [linux, macos, windows]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    macos: ["macOS 10.13+"]
+    windows: ["Windows 10+"]
+  architecture: [x86_64, i686]
+  target_binaries: ["x86", "x64", "ARM", "MIPS", "PowerPC"]
+
+commands:
+  - name: search_gadgets
+    description: "Search for all ROP gadgets"
+    template: "ropper --file {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "ropper --file binary"
+    
+  - name: search_specific_gadget
+    description: "Search for specific instruction"
+    template: "ropper --file {binary} --search '{instruction}'"
+    parameters:
+      binary: {type: path, required: true}
+      instruction: {type: str, required: true}
+    example: "ropper --file binary --search 'pop rdi'"
+    
+  - name: search_jop_gadgets
+    description: "Search for JOP gadgets"
+    template: "ropper --file {binary} --jop"
+    parameters:
+      binary: {type: path, required: true}
+    example: "ropper --file binary --jop"
+    
+  - name: search_syscalls
+    description: "Search for syscall gadgets"
+    template: "ropper --file {binary} --syscall"
+    parameters:
+      binary: {type: path, required: true}
+    example: "ropper --file binary --syscall"
+    
+  - name: filter_bad_bytes
+    description: "Filter gadgets with bad bytes"
+    template: "ropper --file {binary} --badbytes {bytes}"
+    parameters:
+      binary: {type: path, required: true}
+      bytes: {type: str, required: true, description: "Hex bytes separated by space"}
+    example: "ropper --file binary --badbytes 00 0a 0d"
+    
+  - name: semantic_search
+    description: "Semantic gadget search"
+    template: "ropper --file {binary} --semantic '{semantic}'"
+    parameters:
+      binary: {type: path, required: true}
+      semantic: {type: str, required: true}
+    example: "ropper --file binary --semantic 'eax+=1'"
+    
+  - name: instruction_search
+    description: "Search for specific instruction type"
+    template: "ropper --file {binary} --inst-count {count} --type {type}"
+    parameters:
+      binary: {type: path, required: true}
+      count: {type: int, required: true}
+      type: {type: str, required: true, description: "rop, jop, sys, all"}
+    example: "ropper --file binary --inst-count 5 --type rop"
+    
+  - name: opcode_search
+    description: "Search for opcode sequences"
+    template: "ropper --file {binary} --opcode {opcode}"
+    parameters:
+      binary: {type: path, required: true}
+      opcode: {type: str, required: true}
+    example: "ropper --file binary --opcode 5fc3"
+    
+  - name: chain_generation
+    description: "Generate ROP chain"
+    template: "ropper --file {binary} --chain '{chain_spec}'"
+    parameters:
+      binary: {type: path, required: true}
+      chain_spec: {type: str, required: true}
+    example: "ropper --file binary --chain 'execve cmd=/bin/sh'"
+    
+  - name: save_gadgets
+    description: "Save gadgets to file"
+    template: "ropper --file {binary} --outfile {output_file}"
+    parameters:
+      binary: {type: path, required: true}
+      output_file: {type: path, required: true}
+    example: "ropper --file binary --outfile gadgets.txt"
+    
+  - name: multiple_files
+    description: "Load multiple binaries"
+    template: "ropper --file {binary1} --file {binary2}"
+    parameters:
+      binary1: {type: path, required: true}
+      binary2: {type: path, required: true}
+    example: "ropper --file binary --file libc.so.6"
+    
+  - name: console_mode
+    description: "Interactive console mode"
+    template: "ropper --console --file {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "ropper --console --file binary"
+    
+  - name: set_architecture
+    description: "Set target architecture"
+    template: "ropper --file {binary} --arch {arch}"
+    parameters:
+      binary: {type: path, required: true}
+      arch: {type: str, required: true}
+    example: "ropper --file binary --arch x86"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: false
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [pwntools, ropgadget, radare2]
+
+known_issues:
+  - issue: "Large binaries can take time to analyze"
+    impact: medium
+    workaround: "Use specific searches instead of loading all gadgets"
+  - issue: "Semantic search may not find all possibilities"
+    impact: low
+    workaround: "Combine with manual instruction search"
+  - issue: "Chain generation limited to common patterns"
+    impact: medium
+    workaround: "Manually build chains for complex exploits"
+
+success_indicators:
+  - "\\[INFO\\]"
+  - "Gadgets found"
+  - "0x[0-9a-f]+:"
+  - "[0-9]+ gadgets found"
+  - "Loading"
+
+failure_indicators:
+  - "\\[ERROR\\]"
+  - "Cannot open"
+  - "File not found"
+  - "No gadgets found"
+  - "Invalid"
+
+installation:
+  pip: "pip install ropper"
+  apt: "apt install ropper"
+  github: "git clone https://github.com/sashs/Ropper && cd Ropper && pip install ."
+  verify: "ropper --version"
+  post_install:
+    - "Install capstone: pip install capstone"
+    - "Test: ropper --file /bin/ls"
+
+effectiveness_baseline:
+  success_rate: 0.92
+  avg_execution_time: 15
+  false_positive_rate: 0.02
+  resource_usage: medium
+  reliability: high
+  notes: "Excellent for finding ROP gadgets; essential for DEP/NX bypass"

@@ -1,0 +1,173 @@
+name: kube-hunter
+version: "0.6.8"
+category: container_security
+description: "Kubernetes penetration testing tool for discovering security weaknesses in Kubernetes clusters"
+
+capabilities:
+  - k8s_vulnerability_scanning
+  - cluster_enumeration
+  - api_server_testing
+  - etcd_exposure_check
+  - kubelet_api_testing
+  - dashboard_exposure
+  - privilege_escalation_detection
+  - network_policy_check
+  - pod_security_check
+  - rbac_analysis
+  - active_hunting
+  - passive_scanning
+
+target_compatibility:
+  os: [linux, windows, macos]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Any with Python 3.6+"]
+    windows: ["Windows 10+"]
+    macos: ["macOS 10.13+"]
+  architecture: [x86_64, arm64]
+  target_systems: ["Kubernetes clusters"]
+
+commands:
+  - name: scan_remote
+    description: "Scan remote Kubernetes cluster"
+    template: "kube-hunter --remote {target}"
+    parameters:
+      target: {type: str, required: true, description: "CIDR or IP range"}
+    example: "kube-hunter --remote 10.0.0.0/24"
+    
+  - name: scan_network
+    description: "Scan entire network segment"
+    template: "kube-hunter --cidr {cidr}"
+    parameters:
+      cidr: {type: str, required: true}
+    example: "kube-hunter --cidr 192.168.1.0/24"
+    
+  - name: scan_internal
+    description: "Scan from inside cluster (pod mode)"
+    template: "kube-hunter --pod"
+    parameters: {}
+    example: "kube-hunter --pod"
+    
+  - name: scan_interface
+    description: "Scan from specific network interface"
+    template: "kube-hunter --interface {interface}"
+    parameters:
+      interface: {type: str, required: true}
+    example: "kube-hunter --interface eth0"
+    
+  - name: active_hunting
+    description: "Active hunting mode (attempts exploits)"
+    template: "kube-hunter --active --remote {target}"
+    parameters:
+      target: {type: str, required: true}
+    example: "kube-hunter --active --remote 10.0.0.0/24"
+    
+  - name: list_hunters
+    description: "List all available hunters"
+    template: "kube-hunter --list"
+    parameters: {}
+    example: "kube-hunter --list"
+    
+  - name: report_json
+    description: "Generate JSON report"
+    template: "kube-hunter --remote {target} --report json --log {output_file}"
+    parameters:
+      target: {type: str, required: true}
+      output_file: {type: path, required: true}
+    example: "kube-hunter --remote 10.0.0.0/24 --report json --log report.json"
+    
+  - name: report_yaml
+    description: "Generate YAML report"
+    template: "kube-hunter --remote {target} --report yaml --log {output_file}"
+    parameters:
+      target: {type: str, required: true}
+      output_file: {type: path, required: true}
+    example: "kube-hunter --remote 10.0.0.0/24 --report yaml --log report.yaml"
+    
+  - name: statistics
+    description: "Show statistics after scan"
+    template: "kube-hunter --remote {target} --statistics"
+    parameters:
+      target: {type: str, required: true}
+    example: "kube-hunter --remote 10.0.0.0/24 --statistics"
+    
+  - name: mapping_only
+    description: "Only map cluster, don't test vulnerabilities"
+    template: "kube-hunter --remote {target} --mapping"
+    parameters:
+      target: {type: str, required: true}
+    example: "kube-hunter --remote 10.0.0.0/24 --mapping"
+    
+  - name: container_mode
+    description: "Run in container"
+    template: "docker run --rm --network host aquasec/kube-hunter --remote {target}"
+    parameters:
+      target: {type: str, required: true}
+    example: "docker run --rm --network host aquasec/kube-hunter --remote 10.0.0.0/24"
+    
+  - name: pod_deployment
+    description: "Deploy as pod in cluster"
+    template: "kubectl create -f https://raw.githubusercontent.com/aquasecurity/kube-hunter/main/job.yaml"
+    parameters: {}
+    example: "kubectl create -f job.yaml"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: true
+  supports_yaml: true
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [kube-bench, kubeaudit, trivy]
+
+known_issues:
+  - issue: "Active mode can be disruptive to production clusters"
+    impact: high
+    workaround: "Use passive mode (default) for production, active only in test environments"
+  - issue: "May trigger security alerts/IDS"
+    impact: medium
+    workaround: "Coordinate with security team, use mapping mode first"
+  - issue: "Network restrictions may limit scanning"
+    impact: medium
+    workaround: "Run from inside cluster with --pod flag"
+  - issue: "Requires network access to K8s API server"
+    impact: high
+    workaround: "Ensure network connectivity or use --pod mode"
+
+success_indicators:
+  - "Hunting started"
+  - "Discovered.*nodes"
+  - "Vulnerabilities found"
+  - "~ Network Location"
+  - "Nodes"
+  - "Detected"
+  - "\\[HIGH\\]"
+  - "\\[MEDIUM\\]"
+  - "\\[LOW\\]"
+
+failure_indicators:
+  - "No cluster found"
+  - "Connection refused"
+  - "Timeout"
+  - "Permission denied"
+  - "Could not reach"
+
+installation:
+  pip: "pip install kube-hunter"
+  docker: "docker pull aquasec/kube-hunter"
+  github: "git clone https://github.com/aquasecurity/kube-hunter.git && cd kube-hunter && pip install -r requirements.txt"
+  verify: "kube-hunter --help"
+  post_install:
+    - "For pod deployment: kubectl apply -f job.yaml"
+    - "Test: kube-hunter --list"
+
+effectiveness_baseline:
+  success_rate: 0.80
+  avg_execution_time: 120
+  false_positive_rate: 0.08
+  resource_usage: low
+  reliability: high
+  notes: "Essential for K8s security; effectiveness depends on cluster exposure and configuration"

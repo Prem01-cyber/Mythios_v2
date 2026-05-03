@@ -1,0 +1,172 @@
+name: apktool
+version: "2.9.2"
+category: mobile_security
+description: "Tool for reverse engineering Android APK files - decompiling, modifying, and recompiling applications"
+
+capabilities:
+  - apk_decompilation
+  - apk_recompilation
+  - resource_extraction
+  - smali_disassembly
+  - manifest_extraction
+  - resource_modification
+  - apk_rebuilding
+  - framework_installation
+  - debugging_enabled
+  - signature_removal
+
+target_compatibility:
+  os: [linux, macos, windows]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    macos: ["macOS 10.13+"]
+    windows: ["Windows 10+"]
+  architecture: [x86_64]
+  requires_java: true
+
+commands:
+  - name: decompile_apk
+    description: "Decompile APK to smali and resources"
+    template: "apktool d {apk_file}"
+    parameters:
+      apk_file: {type: path, required: true}
+    example: "apktool d app.apk"
+    
+  - name: decompile_with_output
+    description: "Decompile to specific directory"
+    template: "apktool d {apk_file} -o {output_dir}"
+    parameters:
+      apk_file: {type: path, required: true}
+      output_dir: {type: path, required: true}
+    example: "apktool d app.apk -o app_decompiled"
+    
+  - name: decompile_no_resources
+    description: "Decompile without extracting resources"
+    template: "apktool d {apk_file} -r"
+    parameters:
+      apk_file: {type: path, required: true}
+    example: "apktool d app.apk -r"
+    
+  - name: decompile_no_sources
+    description: "Extract resources only, skip smali"
+    template: "apktool d {apk_file} -s"
+    parameters:
+      apk_file: {type: path, required: true}
+    example: "apktool d app.apk -s"
+    
+  - name: decompile_force
+    description: "Force decompile (overwrite existing)"
+    template: "apktool d {apk_file} -f"
+    parameters:
+      apk_file: {type: path, required: true}
+    example: "apktool d app.apk -f"
+    
+  - name: recompile_apk
+    description: "Rebuild APK from decompiled directory"
+    template: "apktool b {decompiled_dir}"
+    parameters:
+      decompiled_dir: {type: path, required: true}
+    example: "apktool b app_decompiled"
+    
+  - name: recompile_with_output
+    description: "Rebuild with specific output file"
+    template: "apktool b {decompiled_dir} -o {output_apk}"
+    parameters:
+      decompiled_dir: {type: path, required: true}
+      output_apk: {type: path, required: true}
+    example: "apktool b app_decompiled -o modified.apk"
+    
+  - name: recompile_force
+    description: "Force rebuild (clean build)"
+    template: "apktool b {decompiled_dir} -f"
+    parameters:
+      decompiled_dir: {type: path, required: true}
+    example: "apktool b app_decompiled -f"
+    
+  - name: install_framework
+    description: "Install framework resource file"
+    template: "apktool if {framework_apk}"
+    parameters:
+      framework_apk: {type: path, required: true}
+    example: "apktool if framework-res.apk"
+    
+  - name: empty_framework_dir
+    description: "Clear framework directory"
+    template: "apktool empty-framework-dir"
+    parameters: {}
+    example: "apktool empty-framework-dir"
+    
+  - name: list_frameworks
+    description: "List installed frameworks"
+    template: "apktool list-frameworks"
+    parameters: {}
+    example: "apktool list-frameworks"
+    
+  - name: decompile_debuggable
+    description: "Decompile and make app debuggable"
+    template: "apktool d {apk_file} && sed -i 's/android:debuggable=\"false\"/android:debuggable=\"true\"/g' {output_dir}/AndroidManifest.xml"
+    parameters:
+      apk_file: {type: path, required: true}
+      output_dir: {type: path, required: true}
+    example: "apktool d app.apk && sed -i 's/debuggable=false/debuggable=true/' app/AndroidManifest.xml"
+
+output_format:
+  type: directory
+  log_format: text
+  supports_json: false
+  output_structure: [smali, res, AndroidManifest.xml]
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [jadx, dex2jar, jd-gui, frida, objection]
+
+known_issues:
+  - issue: "Requires Java 8+ installed"
+    impact: high
+    workaround: "Install OpenJDK 8 or later"
+  - issue: "Some obfuscated apps difficult to decompile"
+    impact: medium
+    workaround: "Use jadx for better Java decompilation, combine tools"
+  - issue: "Rebuilt APK needs signing before installation"
+    impact: medium
+    workaround: "Use jarsigner or apksigner to sign rebuilt APK"
+  - issue: "Some resources may not decompile correctly"
+    impact: low
+    workaround: "Use -r flag to skip resource decompilation if issues occur"
+
+success_indicators:
+  - "I: Using Apktool"
+  - "I: Loading resource table"
+  - "I: Decoding.*resources"
+  - "I: Baksmaling classes"
+  - "I: Copying assets"
+  - "I: Built apk"
+  - "I: Checking whether"
+
+failure_indicators:
+  - "W: Could not decode"
+  - "Exception in thread"
+  - "brut.androlib.AndrolibException"
+  - "Error occurred"
+  - "File not found"
+
+installation:
+  apt: "apt install apktool"
+  download: "Download from https://ibotpeaches.github.io/Apktool/"
+  manual: "wget https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool && chmod +x apktool"
+  verify: "apktool --version"
+  post_install:
+    - "Ensure Java is installed: java -version"
+    - "For signing: apt install apksigner or use jarsigner"
+    - "Test: apktool d sample.apk"
+
+effectiveness_baseline:
+  success_rate: 0.90
+  avg_execution_time: 30
+  false_positive_rate: 0.05
+  resource_usage: medium
+  reliability: high
+  notes: "Essential for Android reverse engineering; decompiles to smali (not Java source)"

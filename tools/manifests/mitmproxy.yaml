@@ -1,0 +1,155 @@
+name: mitmproxy
+version: "10.2.1"
+category: web_interception
+description: "Interactive HTTPS proxy for intercepting, inspecting, modifying, and replaying web traffic"
+
+capabilities:
+  - https_interception
+  - ssl_stripping
+  - request_modification
+  - response_modification
+  - traffic_replay
+  - transparent_proxy
+  - reverse_proxy
+  - upstream_proxy
+  - websocket_interception
+  - http2_support
+  - scripting_python
+  - certificate_spoofing
+  - api_fuzzing
+  - authentication_bypass
+
+target_compatibility:
+  os: [linux, windows, macos]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+", "CentOS 7+"]
+    windows: ["Windows 10+", "Windows Server 2016+"]
+    macos: ["macOS 10.13+"]
+  architecture: [x86_64, arm64]
+
+commands:
+  - name: interactive_proxy
+    description: "Start interactive HTTPS proxy on port 8080"
+    template: "mitmproxy -p {port}"
+    parameters:
+      port: {type: int, default: 8080, description: "Listen port"}
+    example: "mitmproxy -p 8080"
+    
+  - name: transparent_proxy
+    description: "Transparent interception mode (requires iptables)"
+    template: "mitmproxy --mode transparent --showhost -p {port}"
+    parameters:
+      port: {type: int, default: 8080}
+    example: "mitmproxy --mode transparent --showhost -p 8080"
+    
+  - name: reverse_proxy
+    description: "Reverse proxy to specific target"
+    template: "mitmproxy --mode reverse:{target_url} -p {port}"
+    parameters:
+      target_url: {type: str, required: true, description: "Target URL"}
+      port: {type: int, default: 8080}
+    example: "mitmproxy --mode reverse:https://target.com -p 8080"
+    
+  - name: web_interface
+    description: "Web-based interface (mitmweb)"
+    template: "mitmweb -p {port} --web-port {web_port}"
+    parameters:
+      port: {type: int, default: 8080, description: "Proxy port"}
+      web_port: {type: int, default: 8081, description: "Web interface port"}
+    example: "mitmweb -p 8080 --web-port 8081"
+    
+  - name: save_traffic
+    description: "Save intercepted traffic to file"
+    template: "mitmdump -p {port} -w {output_file}"
+    parameters:
+      port: {type: int, default: 8080}
+      output_file: {type: path, required: true}
+    example: "mitmdump -p 8080 -w traffic.mitm"
+    
+  - name: replay_traffic
+    description: "Replay saved traffic"
+    template: "mitmdump -nc -C {input_file}"
+    parameters:
+      input_file: {type: path, required: true}
+    example: "mitmdump -nc -C traffic.mitm"
+    
+  - name: filter_traffic
+    description: "Filter specific traffic patterns"
+    template: "mitmproxy -p {port} --view-filter '{filter}'"
+    parameters:
+      port: {type: int, default: 8080}
+      filter: {type: str, required: true, description: "Flow filter expression"}
+    example: "mitmproxy -p 8080 --view-filter '~d target.com & ~m POST'"
+    
+  - name: script_mode
+    description: "Run with custom Python script"
+    template: "mitmdump -p {port} -s {script_path}"
+    parameters:
+      port: {type: int, default: 8080}
+      script_path: {type: path, required: true}
+    example: "mitmdump -p 8080 -s modify_response.py"
+    
+  - name: upstream_proxy
+    description: "Chain through upstream proxy"
+    template: "mitmproxy -p {port} --mode upstream:{upstream_proxy}"
+    parameters:
+      port: {type: int, default: 8080}
+      upstream_proxy: {type: str, required: true}
+    example: "mitmproxy -p 8080 --mode upstream:http://proxy.company.com:3128"
+
+output_format:
+  type: interactive
+  log_format: text
+  supports_json: true
+  capture_format: mitm
+
+requires_auth: false
+requires_root: false
+ports_required: [8080]
+
+supersedes: []
+complements: [burpsuite, zaproxy]
+
+known_issues:
+  - issue: "Certificate trust required on client"
+    impact: medium
+    workaround: "Install mitmproxy CA certificate on target device"
+  - issue: "Certificate pinning bypass difficult"
+    impact: high
+    workaround: "Use Frida or SSL unpinning techniques"
+  - issue: "HTTP/3 not supported"
+    impact: low
+    workaround: "Force HTTP/2 or HTTP/1.1"
+
+success_indicators:
+  - "Proxy traffic visible in interface"
+  - "SSL handshake successful"
+  - "Request/response captured"
+  - "Script executed successfully"
+  - "Traffic replay completed"
+
+failure_indicators:
+  - "Certificate verification failed"
+  - "Connection refused"
+  - "SSL handshake failed"
+  - "Client certificate pinning detected"
+  - "Timeout waiting for traffic"
+  - "Script error"
+
+installation:
+  apt: "apt install mitmproxy"
+  pip: "pip install mitmproxy"
+  brew: "brew install mitmproxy"
+  docker: "docker pull mitmproxy/mitmproxy"
+  verify: "mitmproxy --version"
+  post_install:
+    - "Install CA certificate from ~/.mitmproxy/"
+    - "For transparent mode: Configure iptables rules"
+    - "For mobile testing: Configure device proxy settings"
+
+effectiveness_baseline:
+  success_rate: 0.85
+  avg_execution_time: 0
+  false_positive_rate: 0.05
+  resource_usage: medium
+  reliability: high

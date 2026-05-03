@@ -1,0 +1,179 @@
+name: binwalk
+version: "2.3.4"
+category: firmware_analysis
+description: "Firmware analysis tool for searching binary images for embedded files and executable code"
+
+capabilities:
+  - firmware_extraction
+  - signature_scanning
+  - entropy_analysis
+  - file_carving
+  - compression_detection
+  - filesystem_extraction
+  - magic_byte_detection
+  - recursive_extraction
+  - custom_signatures
+  - raw_compression_scan
+
+target_compatibility:
+  os: [linux, macos]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    macos: ["macOS 10.13+"]
+  architecture: [x86_64, arm64]
+  target_files: ["Firmware images", "IoT binaries", "Router firmware", "Embedded systems"]
+
+commands:
+  - name: basic_scan
+    description: "Basic firmware signature scan"
+    template: "binwalk {firmware}"
+    parameters:
+      firmware: {type: path, required: true}
+    example: "binwalk firmware.bin"
+    
+  - name: extract_all
+    description: "Extract all discovered files"
+    template: "binwalk -e {firmware}"
+    parameters:
+      firmware: {type: path, required: true}
+    example: "binwalk -e firmware.bin"
+    
+  - name: extract_matryoshka
+    description: "Recursive extraction (Matryoshka mode)"
+    template: "binwalk -Me {firmware}"
+    parameters:
+      firmware: {type: path, required: true}
+    example: "binwalk -Me firmware.bin"
+    
+  - name: entropy_analysis
+    description: "Entropy analysis for detecting encryption/compression"
+    template: "binwalk -E {firmware}"
+    parameters:
+      firmware: {type: path, required: true}
+    example: "binwalk -E firmware.bin"
+    
+  - name: save_entropy_plot
+    description: "Save entropy plot to file"
+    template: "binwalk -E -J {firmware}"
+    parameters:
+      firmware: {type: path, required: true}
+    example: "binwalk -E -J firmware.bin"
+    
+  - name: raw_compression
+    description: "Scan for raw compression streams"
+    template: "binwalk -R {firmware}"
+    parameters:
+      firmware: {type: path, required: true}
+    example: "binwalk -R firmware.bin"
+    
+  - name: signature_scan
+    description: "Scan with specific signature file"
+    template: "binwalk -B {signature_file} {firmware}"
+    parameters:
+      signature_file: {type: path, required: true}
+      firmware: {type: path, required: true}
+    example: "binwalk -B custom.sig firmware.bin"
+    
+  - name: strings_scan
+    description: "Scan for common strings"
+    template: "binwalk -A {firmware}"
+    parameters:
+      firmware: {type: path, required: true}
+    example: "binwalk -A firmware.bin"
+    
+  - name: custom_extract_directory
+    description: "Extract to custom directory"
+    template: "binwalk -e -C {output_dir} {firmware}"
+    parameters:
+      output_dir: {type: path, required: true}
+      firmware: {type: path, required: true}
+    example: "binwalk -e -C /tmp/extracted firmware.bin"
+    
+  - name: dd_extract
+    description: "Extract with dd (precise offset/length)"
+    template: "binwalk -D '{signature}:{extension}' {firmware}"
+    parameters:
+      signature: {type: str, required: true}
+      extension: {type: str, required: true}
+      firmware: {type: path, required: true}
+    example: "binwalk -D 'jpeg:jpg' firmware.bin"
+    
+  - name: scan_directory
+    description: "Scan all files in directory"
+    template: "binwalk {directory}/*"
+    parameters:
+      directory: {type: path, required: true}
+    example: "binwalk /firmware_collection/*"
+    
+  - name: verbose_scan
+    description: "Verbose output with all details"
+    template: "binwalk -v {firmware}"
+    parameters:
+      firmware: {type: path, required: true}
+    example: "binwalk -v firmware.bin"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: false
+  extraction_format: directory_tree
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [firmware-mod-kit, jefferson, sasquatch, unblob]
+
+known_issues:
+  - issue: "Some proprietary compression formats not supported"
+    impact: medium
+    workaround: "Use additional extraction tools like jefferson, sasquatch"
+  - issue: "Recursive extraction can create deeply nested directories"
+    impact: low
+    workaround: "Use -e instead of -Me, then manually recurse if needed"
+  - issue: "False positives with signature scanning"
+    impact: low
+    workaround: "Verify extracted files manually, check entropy plot"
+  - issue: "May fail on encrypted firmware"
+    impact: high
+    workaround: "Look for encryption keys in firmware or device memory"
+
+success_indicators:
+  - "DECIMAL.*HEXADECIMAL.*DESCRIPTION"
+  - "0x[0-9A-F]+.*[0-9]+.*0x[0-9A-F]+"
+  - "Squashfs filesystem"
+  - "LZMA compressed data"
+  - "gzip compressed data"
+  - "Linux kernel"
+  - "U-Boot"
+  - "Extracting"
+
+failure_indicators:
+  - "WARNING: Extractor\\.execute failed"
+  - "No supported"
+  - "Could not open"
+  - "Invalid magic"
+  - "Extraction failed"
+
+installation:
+  apt: "apt install binwalk"
+  pip: "pip install binwalk"
+  github: "https://github.com/ReFirmLabs/binwalk"
+  additional_dependencies:
+    - "apt install squashfs-tools"
+    - "apt install mtd-utils"
+    - "apt install gzip bzip2 tar arj lhasa p7zip p7zip-full"
+    - "apt install cramfsprogs cramfsswap"
+  verify: "binwalk --help"
+  post_install:
+    - "For full extraction support: apt install python3-lzma sasquatch jefferson"
+    - "Test: binwalk -e /path/to/firmware.bin"
+
+effectiveness_baseline:
+  success_rate: 0.80
+  avg_execution_time: 30
+  false_positive_rate: 0.10
+  resource_usage: medium
+  reliability: high
+  notes: "Essential for IoT/firmware analysis; success depends on format support"

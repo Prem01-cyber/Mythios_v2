@@ -1,0 +1,163 @@
+name: pwntools
+version: "4.11.0"
+category: exploit_development
+description: "CTF framework and exploit development library for Python"
+
+capabilities:
+  - exploit_development
+  - buffer_overflow_automation
+  - rop_chain_building
+  - shellcode_generation
+  - remote_connection_handling
+  - process_interaction
+  - elf_binary_analysis
+  - format_string_exploitation
+  - integer_overflow_detection
+  - heap_exploitation
+  - scripting_automation
+  - gdb_integration
+  - assembly_disassembly
+
+target_compatibility:
+  os: [linux, macos]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    macos: ["macOS 10.13+"]
+  architecture: [x86_64, i686, arm, arm64, mips]
+  requires_python: "3.6+"
+
+commands:
+  - name: generate_shellcode
+    description: "Generate shellcode for target architecture"
+    template: "python3 -c \"from pwn import *; print(shellcraft.{arch}.{shellcode_type}().rstrip())\""
+    parameters:
+      arch: {type: str, required: true, description: "i386, amd64, arm, mips"}
+      shellcode_type: {type: str, required: true, description: "sh, cat, ls, etc"}
+    example: "python3 -c \"from pwn import *; print(shellcraft.amd64.sh())\""
+    
+  - name: assemble_code
+    description: "Assemble assembly to machine code"
+    template: "python3 -c \"from pwn import *; context.arch='{arch}'; print(asm('{asm_code}'))\""
+    parameters:
+      arch: {type: str, required: true}
+      asm_code: {type: str, required: true}
+    example: "python3 -c \"from pwn import *; context.arch='amd64'; print(asm('mov rax, 0x3b'))\""
+    
+  - name: disassemble_bytes
+    description: "Disassemble machine code"
+    template: "python3 -c \"from pwn import *; context.arch='{arch}'; print(disasm(b'{bytes}'))\""
+    parameters:
+      arch: {type: str, required: true}
+      bytes: {type: str, required: true}
+    example: "python3 -c \"from pwn import *; context.arch='amd64'; print(disasm(b'\\x48\\x89\\xe5'))\""
+    
+  - name: cyclic_pattern
+    description: "Generate cyclic pattern for offset finding"
+    template: "python3 -c \"from pwn import *; print(cyclic({length}))\""
+    parameters:
+      length: {type: int, required: true}
+    example: "python3 -c \"from pwn import *; print(cyclic(200))\""
+    
+  - name: cyclic_find
+    description: "Find offset in cyclic pattern"
+    template: "python3 -c \"from pwn import *; print(cyclic_find('{pattern}'))\""
+    parameters:
+      pattern: {type: str, required: true}
+    example: "python3 -c \"from pwn import *; print(cyclic_find('faaa'))\""
+    
+  - name: pack_address
+    description: "Pack address for payload"
+    template: "python3 -c \"from pwn import *; context.arch='{arch}'; print(p64({address}))\""
+    parameters:
+      arch: {type: str, required: true}
+      address: {type: str, required: true}
+    example: "python3 -c \"from pwn import *; print(p64(0xdeadbeef))\""
+    
+  - name: unpack_bytes
+    description: "Unpack bytes to integer"
+    template: "python3 -c \"from pwn import *; print(hex(u64(b'{bytes}')))\""
+    parameters:
+      bytes: {type: str, required: true}
+    example: "python3 -c \"from pwn import *; print(hex(u64(b'\\xef\\xbe\\xad\\xde')))\""
+    
+  - name: elf_symbols
+    description: "Extract symbols from ELF binary"
+    template: "python3 -c \"from pwn import *; e=ELF('{binary}'); print(e.symbols)\""
+    parameters:
+      binary: {type: path, required: true}
+    example: "python3 -c \"from pwn import *; e=ELF('./binary'); print(e.symbols)\""
+    
+  - name: elf_got
+    description: "Get GOT entries from ELF"
+    template: "python3 -c \"from pwn import *; e=ELF('{binary}'); print(e.got)\""
+    parameters:
+      binary: {type: path, required: true}
+    example: "python3 -c \"from pwn import *; e=ELF('./binary'); print(e.got)\""
+    
+  - name: rop_gadgets
+    description: "Find ROP gadgets in binary"
+    template: "python3 -c \"from pwn import *; r=ROP('{binary}'); print(r.dump())\""
+    parameters:
+      binary: {type: path, required: true}
+    example: "python3 -c \"from pwn import *; r=ROP('./binary'); print(r.dump())\""
+    
+  - name: format_string_offset
+    description: "Find format string offset"
+    template: "python3 -c \"from pwn import *; print(FmtStr(exec_fmt={function}))\""
+    parameters:
+      function: {type: str, required: true, description: "Function to test format string"}
+    example: "python3 -c \"from pwn import *; # requires custom function\""
+
+output_format:
+  type: library
+  log_format: python
+  supports_json: false
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [gdb, radare2, ghidra, ropper]
+
+known_issues:
+  - issue: "Requires Python programming knowledge"
+    impact: medium
+    workaround: "Study pwntools documentation and CTF writeups"
+  - issue: "Some features architecture-specific"
+    impact: low
+    workaround: "Set context.arch appropriately for target"
+  - issue: "ROP chain generation may not work for all binaries"
+    impact: medium
+    workaround: "Manually find gadgets with ropper or ROPgadget"
+
+success_indicators:
+  - "\\[+\\]"
+  - "\\[\\*\\]"
+  - "Loaded.*symbols"
+  - "gadgets found"
+  - "Shellcode:"
+
+failure_indicators:
+  - "\\[-\\]"
+  - "ERROR"
+  - "Exception"
+  - "Could not find"
+  - "Not found"
+
+installation:
+  apt: "apt install python3-pwntools"
+  pip: "pip install pwntools"
+  github: "git clone https://github.com/Gallopsled/pwntools && cd pwntools && pip install -e ."
+  verify: "python3 -c 'from pwn import *; print(pwnlib.__version__)'"
+  post_install:
+    - "Install binutils for all architectures: apt install binutils-*"
+    - "Test: python3 -c 'from pwn import *; print(shellcraft.amd64.sh())'"
+
+effectiveness_baseline:
+  success_rate: 0.90
+  avg_execution_time: 5
+  false_positive_rate: 0.05
+  resource_usage: low
+  reliability: high
+  notes: "Essential for exploit development and CTF; requires programming skill"

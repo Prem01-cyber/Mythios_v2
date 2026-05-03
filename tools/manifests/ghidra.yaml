@@ -1,0 +1,156 @@
+name: ghidra
+version: "10.4"
+category: reverse_engineering
+description: "NSA's software reverse engineering framework for analyzing compiled code on various platforms"
+
+capabilities:
+  - binary_analysis
+  - decompilation
+  - disassembly
+  - code_analysis
+  - headless_mode
+  - scripting_python
+  - scripting_java
+  - cross_platform_support
+  - multi_architecture
+  - function_graph
+  - data_type_analysis
+  - string_search
+  - cross_references
+  - patch_analysis
+  - malware_analysis
+
+target_compatibility:
+  os: [linux, windows, macos]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    windows: ["Windows 10+"]
+    macos: ["macOS 10.13+"]
+  architecture: [x86_64]
+  target_binaries: ["x86", "x64", "ARM", "MIPS", "PowerPC", "SPARC"]
+
+commands:
+  - name: headless_analyze
+    description: "Analyze binary in headless mode"
+    template: "analyzeHeadless {project_dir} {project_name} -import {binary} -postScript {script}"
+    parameters:
+      project_dir: {type: path, required: true}
+      project_name: {type: str, required: true}
+      binary: {type: path, required: true}
+      script: {type: path, required: false}
+    example: "analyzeHeadless /tmp/ghidra_projects MyProject -import binary.exe"
+    
+  - name: decompile_function
+    description: "Decompile specific function"
+    template: "analyzeHeadless {project_dir} {project_name} -import {binary} -postScript DecompileFunction.py {function_address}"
+    parameters:
+      project_dir: {type: path, required: true}
+      project_name: {type: str, required: true}
+      binary: {type: path, required: true}
+      function_address: {type: str, required: true}
+    example: "analyzeHeadless /tmp/proj MyProj -import bin.exe -postScript DecompileFunction.py 0x401000"
+    
+  - name: extract_strings
+    description: "Extract strings from binary"
+    template: "analyzeHeadless {project_dir} {project_name} -import {binary} -postScript ExtractStrings.py"
+    parameters:
+      project_dir: {type: path, required: true}
+      project_name: {type: str, required: true}
+      binary: {type: path, required: true}
+    example: "analyzeHeadless /tmp/proj MyProj -import binary -postScript ExtractStrings.py"
+    
+  - name: find_functions
+    description: "List all functions in binary"
+    template: "analyzeHeadless {project_dir} {project_name} -import {binary} -postScript ListFunctions.py"
+    parameters:
+      project_dir: {type: path, required: true}
+      project_name: {type: str, required: true}
+      binary: {type: path, required: true}
+    example: "analyzeHeadless /tmp/proj MyProj -import bin -postScript ListFunctions.py"
+    
+  - name: analyze_with_script
+    description: "Run custom Ghidra script on binary"
+    template: "analyzeHeadless {project_dir} {project_name} -import {binary} -scriptPath {script_dir} -postScript {script_name}"
+    parameters:
+      project_dir: {type: path, required: true}
+      project_name: {type: str, required: true}
+      binary: {type: path, required: true}
+      script_dir: {type: path, required: true}
+      script_name: {type: str, required: true}
+    example: "analyzeHeadless /tmp/proj MyProj -import bin -scriptPath /scripts -postScript analyze.py"
+    
+  - name: batch_analyze
+    description: "Analyze multiple binaries"
+    template: "analyzeHeadless {project_dir} {project_name} -import {binary_dir}"
+    parameters:
+      project_dir: {type: path, required: true}
+      project_name: {type: str, required: true}
+      binary_dir: {type: path, required: true}
+    example: "analyzeHeadless /tmp/proj MyProj -import /binaries/"
+    
+  - name: gui_mode
+    description: "Launch Ghidra GUI"
+    template: "ghidra"
+    parameters: {}
+    example: "ghidra"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: false
+  project_format: ghidra_project
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [radare2, ida, binary ninja, objdump]
+
+known_issues:
+  - issue: "Requires Java 17+"
+    impact: high
+    workaround: "Install OpenJDK 17 or later"
+  - issue: "Large binaries can take significant time to analyze"
+    impact: medium
+    workaround: "Use headless mode and disable unnecessary analyzers"
+  - issue: "GUI mode not suitable for automated workflows"
+    impact: low
+    workaround: "Use headless mode with Python/Java scripts"
+  - issue: "Decompilation quality varies by architecture and compiler"
+    impact: medium
+    workaround: "Manual review and cross-reference with other tools"
+
+success_indicators:
+  - "INFO  ANALYZING"
+  - "INFO  REPORT"
+  - "Analysis succeeded"
+  - "Decompilation complete"
+  - "Script completed successfully"
+
+failure_indicators:
+  - "ERROR"
+  - "Failed to import"
+  - "Analysis failed"
+  - "Unsupported format"
+  - "Out of memory"
+  - "Script execution failed"
+
+installation:
+  download: "https://github.com/NationalSecurityAgency/ghidra/releases"
+  manual: "Download ZIP, extract, run ghidraRun"
+  requirements:
+    - "Java 17+ (OpenJDK recommended)"
+  verify: "ghidraRun --version"
+  post_install:
+    - "Set JAVA_HOME to Java 17+ installation"
+    - "Add ghidra/support to PATH for headless mode"
+    - "For scripts: Place in ghidra_scripts directory"
+
+effectiveness_baseline:
+  success_rate: 0.88
+  avg_execution_time: 180
+  false_positive_rate: 0.05
+  resource_usage: high
+  reliability: high
+  notes: "Gold standard for reverse engineering; slow but thorough"

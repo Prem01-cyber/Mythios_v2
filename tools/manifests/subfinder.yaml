@@ -1,0 +1,137 @@
+name: subfinder
+version: "2.6.3"
+category: osint_reconnaissance
+description: "Fast passive subdomain discovery tool using multiple sources"
+
+capabilities:
+  - passive_subdomain_enumeration
+  - multiple_sources
+  - fast_discovery
+  - api_integration
+  - wildcard_filtering
+  - subdomain_validation
+  - json_output
+  - recursive_enumeration
+  - rate_limiting
+  - source_filtering
+
+target_compatibility:
+  os: [linux, windows, macos]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    windows: ["Windows 10+"]
+    macos: ["macOS 10.13+"]
+  architecture: [x86_64, arm64]
+
+commands:
+  - name: basic_scan
+    description: "Basic subdomain enumeration"
+    template: "subfinder -d {domain}"
+    parameters:
+      domain: {type: str, required: true}
+    example: "subfinder -d example.com"
+    
+  - name: output_file
+    description: "Save results to file"
+    template: "subfinder -d {domain} -o {output_file}"
+    parameters:
+      domain: {type: str, required: true}
+      output_file: {type: path, required: true}
+    example: "subfinder -d example.com -o subdomains.txt"
+    
+  - name: json_output
+    description: "Output in JSON format"
+    template: "subfinder -d {domain} -json -o {output_file}"
+    parameters:
+      domain: {type: str, required: true}
+      output_file: {type: path, required: true}
+    example: "subfinder -d example.com -json -o results.json"
+    
+  - name: silent_mode
+    description: "Only show subdomains in output"
+    template: "subfinder -d {domain} -silent"
+    parameters:
+      domain: {type: str, required: true}
+    example: "subfinder -d example.com -silent"
+    
+  - name: recursive
+    description: "Recursive subdomain discovery"
+    template: "subfinder -d {domain} -recursive"
+    parameters:
+      domain: {type: str, required: true}
+    example: "subfinder -d example.com -recursive"
+    
+  - name: all_sources
+    description: "Use all sources (including slow ones)"
+    template: "subfinder -d {domain} -all"
+    parameters:
+      domain: {type: str, required: true}
+    example: "subfinder -d example.com -all"
+    
+  - name: specific_sources
+    description: "Use specific sources only"
+    template: "subfinder -d {domain} -sources {sources}"
+    parameters:
+      domain: {type: str, required: true}
+      sources: {type: str, required: true, description: "Comma-separated sources"}
+    example: "subfinder -d example.com -sources crtsh,hackertarget"
+    
+  - name: threads
+    description: "Set number of concurrent threads"
+    template: "subfinder -d {domain} -t {threads}"
+    parameters:
+      domain: {type: str, required: true}
+      threads: {type: int, default: 10}
+    example: "subfinder -d example.com -t 20"
+    
+  - name: domain_list
+    description: "Scan multiple domains from file"
+    template: "subfinder -dL {domain_list} -o {output_file}"
+    parameters:
+      domain_list: {type: path, required: true}
+      output_file: {type: path, required: true}
+    example: "subfinder -dL domains.txt -o all_subdomains.txt"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: true
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [amass, assetfinder, findomain]
+
+known_issues:
+  - issue: "Some sources require API keys for full functionality"
+    impact: low
+    workaround: "Configure API keys in provider-config.yaml"
+  - issue: "Rate limiting may slow down enumeration"
+    impact: low
+    workaround: "Use -t flag to adjust threads or wait between scans"
+
+success_indicators:
+  - "\\[.*\\] Enumerating subdomains"
+  - "[a-z0-9.-]+\\.[a-z]+"
+  - "Found [0-9]+ subdomain"
+
+failure_indicators:
+  - "Error"
+  - "Could not resolve"
+  - "No subdomains found"
+  - "Rate limit exceeded"
+
+installation:
+  go: "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"
+  apt: "apt install subfinder"
+  github: "https://github.com/projectdiscovery/subfinder"
+  verify: "subfinder -version"
+
+effectiveness_baseline:
+  success_rate: 0.92
+  avg_execution_time: 30
+  false_positive_rate: 0.03
+  resource_usage: low
+  reliability: high

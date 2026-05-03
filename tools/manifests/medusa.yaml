@@ -1,0 +1,221 @@
+name: medusa
+version: "2.2"
+category: password_cracking
+description: "Fast, parallel, modular brute-force login cracker supporting many network protocols"
+
+capabilities:
+  - ssh_bruteforce
+  - ftp_bruteforce
+  - http_bruteforce
+  - smb_bruteforce
+  - rdp_bruteforce
+  - telnet_bruteforce
+  - mysql_bruteforce
+  - postgres_bruteforce
+  - vnc_bruteforce
+  - pop3_bruteforce
+  - imap_bruteforce
+  - smtp_bruteforce
+  - mssql_bruteforce
+  - cvs_bruteforce
+  - snmp_bruteforce
+  - parallel_attacks
+  - password_spraying
+  - custom_modules
+
+target_compatibility:
+  os: [linux, macos]
+  versions:
+    linux: ["Ubuntu 16.04+", "Debian 9+", "Kali 2018+", "CentOS 7+"]
+    macos: ["macOS 10.12+"]
+  architecture: [x86_64, i686]
+
+commands:
+  - name: ssh_bruteforce
+    description: "Brute-force SSH service"
+    template: "medusa -h {target} -u {username} -P {password_list} -M ssh -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      username: {type: str, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -u admin -P /usr/share/wordlists/rockyou.txt -M ssh -t 4"
+    
+  - name: ssh_user_pass_lists
+    description: "SSH brute-force with user and password lists"
+    template: "medusa -h {target} -U {user_list} -P {password_list} -M ssh -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      user_list: {type: path, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -U users.txt -P passwords.txt -M ssh -t 4"
+    
+  - name: ftp_bruteforce
+    description: "Brute-force FTP service"
+    template: "medusa -h {target} -u {username} -P {password_list} -M ftp -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      username: {type: str, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -u ftpuser -P passwords.txt -M ftp -t 4"
+    
+  - name: smb_bruteforce
+    description: "Brute-force SMB/CIFS service"
+    template: "medusa -h {target} -u {username} -P {password_list} -M smbnt -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      username: {type: str, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -u administrator -P passwords.txt -M smbnt -t 4"
+    
+  - name: rdp_bruteforce
+    description: "Brute-force RDP service"
+    template: "medusa -h {target} -u {username} -P {password_list} -M rdp -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      username: {type: str, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 2}
+    example: "medusa -h 10.10.10.10 -u administrator -P passwords.txt -M rdp -t 2"
+    
+  - name: http_basic_auth
+    description: "Brute-force HTTP basic authentication"
+    template: "medusa -h {target} -u {username} -P {password_list} -M http -m DIR:{path} -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      username: {type: str, required: true}
+      password_list: {type: path, required: true}
+      path: {type: str, default: "/"}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -u admin -P passwords.txt -M http -m DIR:/admin -t 4"
+    
+  - name: mysql_bruteforce
+    description: "Brute-force MySQL database"
+    template: "medusa -h {target} -u {username} -P {password_list} -M mysql -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      username: {type: str, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -u root -P passwords.txt -M mysql -t 4"
+    
+  - name: postgres_bruteforce
+    description: "Brute-force PostgreSQL database"
+    template: "medusa -h {target} -u {username} -P {password_list} -M postgres -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      username: {type: str, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -u postgres -P passwords.txt -M postgres -t 4"
+    
+  - name: telnet_bruteforce
+    description: "Brute-force Telnet service"
+    template: "medusa -h {target} -u {username} -P {password_list} -M telnet -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      username: {type: str, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -u admin -P passwords.txt -M telnet -t 4"
+    
+  - name: vnc_bruteforce
+    description: "Brute-force VNC service"
+    template: "medusa -h {target} -P {password_list} -M vnc -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      password_list: {type: path, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -P passwords.txt -M vnc -t 4"
+    
+  - name: password_spray
+    description: "Password spray attack (one password, many users)"
+    template: "medusa -h {target} -U {user_list} -p {password} -M {module} -t {threads} -e ns"
+    parameters:
+      target: {type: ip, required: true}
+      user_list: {type: path, required: true}
+      password: {type: str, required: true, sensitive: true}
+      module: {type: str, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -U users.txt -p Password123 -M ssh -t 4 -e ns"
+    
+  - name: combo_list
+    description: "Use colon-separated combo list (user:pass)"
+    template: "medusa -h {target} -C {combo_list} -M {module} -t {threads}"
+    parameters:
+      target: {type: ip, required: true}
+      combo_list: {type: path, required: true}
+      module: {type: str, required: true}
+      threads: {type: int, default: 4}
+    example: "medusa -h 10.10.10.10 -C combos.txt -M ssh -t 4"
+    
+  - name: list_modules
+    description: "List all available modules"
+    template: "medusa -d"
+    parameters: {}
+    example: "medusa -d"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: false
+  success_pattern: "ACCOUNT FOUND"
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [hydra, crackmapexec, ncrack]
+
+known_issues:
+  - issue: "Some modules less stable than hydra equivalents"
+    impact: medium
+    workaround: "Try hydra if medusa fails, or vice versa"
+  - issue: "No built-in rate limiting"
+    impact: medium
+    workaround: "Use -t flag to limit threads, add delays in scripts"
+  - issue: "Limited protocol support compared to hydra"
+    impact: low
+    workaround: "Use hydra for protocols not supported by medusa"
+  - issue: "Can trigger account lockouts"
+    impact: high
+    workaround: "Use password spraying with -e ns flag, limit attempts"
+
+success_indicators:
+  - "ACCOUNT FOUND"
+  - "\\[SUCCESS\\]"
+  - "Password: .+"
+  - "Host: .+ User: .+ Password: .+"
+
+failure_indicators:
+  - "ACCOUNT CHECK failed"
+  - "Connection refused"
+  - "Connection timeout"
+  - "Host unreachable"
+  - "Module not found"
+  - "Invalid username"
+  - "Account locked"
+  - "Too many failed attempts"
+
+installation:
+  apt: "apt install medusa"
+  yum: "yum install medusa"
+  brew: "brew install medusa"
+  github: "https://github.com/jmk-foofus/medusa"
+  verify: "medusa -V"
+  post_install:
+    - "Verify modules: medusa -d"
+    - "Download wordlists: apt install seclists"
+    - "Configure rate limiting to avoid lockouts"
+
+effectiveness_baseline:
+  success_rate: 0.75
+  avg_execution_time: 300
+  false_positive_rate: 0.01
+  resource_usage: medium
+  reliability: medium
+  notes: "Good alternative to hydra; sometimes succeeds when hydra fails on specific protocols"

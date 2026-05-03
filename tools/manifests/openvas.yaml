@@ -1,0 +1,168 @@
+name: openvas
+version: "22.4"
+category: vulnerability_scanning
+description: "Open Vulnerability Assessment System - comprehensive vulnerability scanner (part of Greenbone Vulnerability Management)"
+
+capabilities:
+  - comprehensive_vulnerability_scanning
+  - network_vulnerability_assessment
+  - web_application_scanning
+  - authenticated_scanning
+  - compliance_checking
+  - credential_based_scanning
+  - plugin_updates
+  - custom_scan_configurations
+  - reporting
+  - continuous_monitoring
+  - schedule_scans
+  - asset_management
+
+target_compatibility:
+  os: [linux]
+  versions:
+    linux: ["Ubuntu 20.04+", "Debian 10+", "Kali 2020+"]
+  architecture: [x86_64]
+
+commands:
+  - name: start_services
+    description: "Start all GVM/OpenVAS services"
+    template: "gvm-start"
+    parameters: {}
+    example: "gvm-start"
+    
+  - name: stop_services
+    description: "Stop all GVM services"
+    template: "gvm-stop"
+    parameters: {}
+    example: "gvm-stop"
+    
+  - name: check_setup
+    description: "Check GVM installation and configuration"
+    template: "gvm-check-setup"
+    parameters: {}
+    example: "gvm-check-setup"
+    
+  - name: update_feeds
+    description: "Update vulnerability feeds"
+    template: "greenbone-nvt-sync && greenbone-feed-sync --type SCAP && greenbone-feed-sync --type CERT"
+    parameters: {}
+    example: "greenbone-nvt-sync"
+    
+  - name: create_target
+    description: "Create scan target via gvm-cli"
+    template: "gvm-cli --gmp-username {username} --gmp-password {password} socket --socketpath /var/run/gvmd/gvmd.sock --xml '<create_target><name>{target_name}</name><hosts>{hosts}</hosts></create_target>'"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      target_name: {type: str, required: true}
+      hosts: {type: str, required: true}
+    example: "gvm-cli --gmp-username admin --gmp-password admin socket --xml '<create_target>...'"
+    
+  - name: start_scan
+    description: "Start vulnerability scan"
+    template: "gvm-cli --gmp-username {username} --gmp-password {password} socket --socketpath /var/run/gvmd/gvmd.sock --xml '<create_task><name>{task_name}</name><target id=\"{target_id}\"/><config id=\"{config_id}\"/></create_task>'"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      task_name: {type: str, required: true}
+      target_id: {type: str, required: true}
+      config_id: {type: str, required: true}
+    example: "gvm-cli socket --xml '<create_task>...'"
+    
+  - name: list_targets
+    description: "List all scan targets"
+    template: "gvm-cli --gmp-username {username} --gmp-password {password} socket --socketpath /var/run/gvmd/gvmd.sock --xml '<get_targets/>'"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+    example: "gvm-cli socket --xml '<get_targets/>'"
+    
+  - name: list_tasks
+    description: "List all scan tasks"
+    template: "gvm-cli --gmp-username {username} --gmp-password {password} socket --socketpath /var/run/gvmd/gvmd.sock --xml '<get_tasks/>'"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+    example: "gvm-cli socket --xml '<get_tasks/>'"
+    
+  - name: get_results
+    description: "Get scan results"
+    template: "gvm-cli --gmp-username {username} --gmp-password {password} socket --socketpath /var/run/gvmd/gvmd.sock --xml '<get_results task_id=\"{task_id}\"/>'"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      task_id: {type: str, required: true}
+    example: "gvm-cli socket --xml '<get_results task_id=\"abc-123\"/>'"
+    
+  - name: web_interface
+    description: "Access web interface (default port 9392)"
+    template: "Open browser to https://localhost:9392"
+    parameters: {}
+    example: "https://localhost:9392"
+
+output_format:
+  type: xml
+  log_format: text
+  supports_json: false
+  report_formats: [pdf, html, xml, csv]
+
+requires_auth: true
+requires_root: true
+ports_required: [9392, 9390, 9391]
+
+supersedes: []
+complements: [nmap, nuclei, nessus]
+
+known_issues:
+  - issue: "Initial feed sync takes several hours"
+    impact: high
+    workaround: "Run feed sync overnight on first install"
+  - issue: "High resource usage during scans"
+    impact: medium
+    workaround: "Limit concurrent scans, increase system resources"
+  - issue: "Complex setup and configuration"
+    impact: medium
+    workaround: "Use gvm-setup script or Docker container"
+  - issue: "Web UI requires PostgreSQL and Redis"
+    impact: medium
+    workaround: "Follow installation guide for all dependencies"
+  - issue: "Feed updates can be slow"
+    impact: low
+    workaround: "Schedule updates during off-hours"
+
+success_indicators:
+  - "Scanner started"
+  - "Task.*running"
+  - "Status: Done"
+  - "Vulnerabilities found"
+  - "<status>200</status>"
+  - "Feed update.*successful"
+
+failure_indicators:
+  - "ERROR"
+  - "Failed to connect"
+  - "Authentication failed"
+  - "Scanner not running"
+  - "Feed update failed"
+  - "Database connection failed"
+
+installation:
+  apt: "apt install gvm"
+  docker: "docker pull greenbone/openvas"
+  manual: "Follow Greenbone documentation for source install"
+  verify: "gvmd --version && openvas --version"
+  post_install:
+    - "Run setup: gvm-setup"
+    - "Create admin user: gvmd --create-user=admin --password=admin"
+    - "Update feeds: greenbone-nvt-sync (takes hours)"
+    - "Start services: gvm-start"
+    - "Check status: gvm-check-setup"
+    - "Access web UI: https://localhost:9392"
+
+effectiveness_baseline:
+  success_rate: 0.85
+  avg_execution_time: 1800
+  false_positive_rate: 0.15
+  resource_usage: very_high
+  reliability: high
+  notes: "Comprehensive but resource-intensive; excellent for enterprise vulnerability management"

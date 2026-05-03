@@ -1,0 +1,181 @@
+name: radare2
+version: "5.8.8"
+category: reverse_engineering
+description: "Open-source reverse engineering framework and command-line toolset for binary analysis"
+
+capabilities:
+  - binary_analysis
+  - disassembly
+  - debugging
+  - hex_editing
+  - patching
+  - scripting
+  - emulation
+  - diffing
+  - graph_visualization
+  - string_search
+  - crypto_analysis
+  - format_analysis
+  - multi_architecture
+  - plugin_support
+  - headless_automation
+
+target_compatibility:
+  os: [linux, windows, macos, android, ios]
+  versions:
+    linux: ["Ubuntu 16.04+", "Debian 9+", "Kali 2018+"]
+    windows: ["Windows 7+"]
+    macos: ["macOS 10.12+"]
+  architecture: [x86_64, i686, arm, arm64]
+  target_binaries: ["x86", "x64", "ARM", "MIPS", "PowerPC", "SPARC", "AVR"]
+
+commands:
+  - name: analyze_binary
+    description: "Open and analyze binary"
+    template: "r2 -A {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "r2 -A /bin/ls"
+    
+  - name: batch_commands
+    description: "Execute r2 commands in batch"
+    template: "r2 -qc '{commands}' {binary}"
+    parameters:
+      commands: {type: str, required: true, description: "Semicolon-separated r2 commands"}
+      binary: {type: path, required: true}
+    example: "r2 -qc 'aaa;pdf @main' binary"
+    
+  - name: disassemble_function
+    description: "Disassemble function at address"
+    template: "r2 -qc 'aaa;pdf @{address}' {binary}"
+    parameters:
+      address: {type: str, required: true}
+      binary: {type: path, required: true}
+    example: "r2 -qc 'aaa;pdf @main' /bin/ls"
+    
+  - name: search_strings
+    description: "Search for strings in binary"
+    template: "r2 -qc 'iz' {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "r2 -qc 'iz' binary"
+    
+  - name: list_functions
+    description: "List all functions"
+    template: "r2 -qc 'aaa;afl' {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "r2 -qc 'aaa;afl' /bin/cat"
+    
+  - name: list_imports
+    description: "List imported functions"
+    template: "r2 -qc 'ii' {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "r2 -qc 'ii' binary"
+    
+  - name: list_exports
+    description: "List exported functions"
+    template: "r2 -qc 'iE' {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "r2 -qc 'iE' library.so"
+    
+  - name: binary_info
+    description: "Get binary information"
+    template: "r2 -qc 'i' {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "r2 -qc 'i' binary"
+    
+  - name: decompile_ghidra
+    description: "Decompile using r2ghidra plugin"
+    template: "r2 -qc 'aaa;pdg @{function}' {binary}"
+    parameters:
+      function: {type: str, required: true}
+      binary: {type: path, required: true}
+    example: "r2 -qc 'aaa;pdg @main' binary"
+    
+  - name: json_output
+    description: "Get function list in JSON"
+    template: "r2 -qc 'aaaj;aflj' {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "r2 -qc 'aaaaj;aflj' binary"
+    
+  - name: rabin2_info
+    description: "Get binary info with rabin2"
+    template: "rabin2 -I {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "rabin2 -I binary"
+    
+  - name: rabin2_strings
+    description: "Extract strings with rabin2"
+    template: "rabin2 -z {binary}"
+    parameters:
+      binary: {type: path, required: true}
+    example: "rabin2 -z binary"
+    
+  - name: radiff2
+    description: "Binary diff with radiff2"
+    template: "radiff2 {binary1} {binary2}"
+    parameters:
+      binary1: {type: path, required: true}
+      binary2: {type: path, required: true}
+    example: "radiff2 old_binary new_binary"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: true
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [ghidra, ida, objdump, gdb]
+
+known_issues:
+  - issue: "Steep learning curve with many commands"
+    impact: medium
+    workaround: "Use r2 -qc for scripted analysis, consult documentation"
+  - issue: "Decompilation requires r2ghidra plugin"
+    impact: low
+    workaround: "Install r2ghidra-dec separately"
+  - issue: "Visual mode not suitable for automated workflows"
+    impact: low
+    workaround: "Use -qc flag for batch commands"
+
+success_indicators:
+  - "0x[0-9a-f]+"
+  - "\\[0x[0-9a-f]+\\]"
+  - "fcn\\."
+  - "sym\\."
+  - "analyzed [0-9]+ functions"
+
+failure_indicators:
+  - "ERROR"
+  - "Cannot open"
+  - "Unknown format"
+  - "Invalid command"
+  - "File not found"
+
+installation:
+  apt: "apt install radare2"
+  brew: "brew install radare2"
+  github: "git clone https://github.com/radareorg/radare2 && cd radare2 && sys/install.sh"
+  verify: "r2 -v"
+  post_install:
+    - "Install r2ghidra: r2pm -ci r2ghidra"
+    - "Update database: r2pm update"
+    - "Test: r2 -qc 'aaa;afl' /bin/ls"
+
+effectiveness_baseline:
+  success_rate: 0.85
+  avg_execution_time: 60
+  false_positive_rate: 0.05
+  resource_usage: medium
+  reliability: high
+  notes: "Faster than Ghidra, good for quick analysis and automation"

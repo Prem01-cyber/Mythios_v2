@@ -1,0 +1,185 @@
+name: prowler
+version: "3.12.0"
+category: cloud_security
+description: "Cloud security assessment tool for AWS, Azure, GCP, and Kubernetes based on CIS benchmarks"
+
+capabilities:
+  - aws_security_audit
+  - azure_security_audit
+  - gcp_security_audit
+  - kubernetes_security_audit
+  - cis_benchmark_compliance
+  - multi_account_scanning
+  - iam_analysis
+  - s3_security_check
+  - network_security_assessment
+  - encryption_verification
+  - logging_audit
+  - compliance_reporting
+  - security_hub_integration
+  - drift_detection
+
+target_compatibility:
+  os: [linux, macos, windows]
+  versions:
+    linux: ["Ubuntu 20.04+", "Debian 11+", "Any with Python 3.9+"]
+    macos: ["macOS 11+"]
+    windows: ["Windows 10+"]
+  architecture: [x86_64, arm64]
+  cloud_providers: ["AWS", "Azure", "GCP", "Kubernetes"]
+
+commands:
+  - name: aws_full_scan
+    description: "Full AWS account security audit"
+    template: "prowler aws"
+    parameters: {}
+    example: "prowler aws"
+    
+  - name: aws_specific_region
+    description: "Scan specific AWS region"
+    template: "prowler aws --region {region}"
+    parameters:
+      region: {type: str, required: true}
+    example: "prowler aws --region us-east-1"
+    
+  - name: aws_specific_service
+    description: "Scan specific AWS service"
+    template: "prowler aws --services {services}"
+    parameters:
+      services: {type: str, required: true, description: "Comma-separated services"}
+    example: "prowler aws --services s3,iam,ec2"
+    
+  - name: aws_compliance
+    description: "Run specific compliance framework"
+    template: "prowler aws --compliance {framework}"
+    parameters:
+      framework: {type: str, required: true, description: "cis_1.5_aws, pci_3.2.1_aws, etc"}
+    example: "prowler aws --compliance cis_1.5_aws"
+    
+  - name: aws_severity_filter
+    description: "Filter by severity level"
+    template: "prowler aws --severity {severity}"
+    parameters:
+      severity: {type: str, required: true, description: "critical, high, medium, low"}
+    example: "prowler aws --severity critical high"
+    
+  - name: aws_output_formats
+    description: "Generate multiple output formats"
+    template: "prowler aws --output-formats {formats} --output-directory {output_dir}"
+    parameters:
+      formats: {type: str, required: true, description: "json, html, csv, json-asff"}
+      output_dir: {type: path, required: true}
+    example: "prowler aws --output-formats json html csv --output-directory ./reports"
+    
+  - name: aws_multi_account
+    description: "Scan multiple AWS accounts"
+    template: "prowler aws --organizations-role {role_name}"
+    parameters:
+      role_name: {type: str, required: true}
+    example: "prowler aws --organizations-role ProwlerExecRole"
+    
+  - name: azure_full_scan
+    description: "Full Azure subscription audit"
+    template: "prowler azure"
+    parameters: {}
+    example: "prowler azure"
+    
+  - name: azure_subscription
+    description: "Scan specific Azure subscription"
+    template: "prowler azure --subscription-id {subscription_id}"
+    parameters:
+      subscription_id: {type: str, required: true}
+    example: "prowler azure --subscription-id abc-123-def-456"
+    
+  - name: gcp_full_scan
+    description: "Full GCP project audit"
+    template: "prowler gcp --project-id {project_id}"
+    parameters:
+      project_id: {type: str, required: true}
+    example: "prowler gcp --project-id my-project-123"
+    
+  - name: kubernetes_scan
+    description: "Kubernetes cluster audit"
+    template: "prowler kubernetes --kubeconfig {kubeconfig}"
+    parameters:
+      kubeconfig: {type: path, required: true}
+    example: "prowler kubernetes --kubeconfig ~/.kube/config"
+    
+  - name: list_services
+    description: "List all available services for a provider"
+    template: "prowler {provider} --list-services"
+    parameters:
+      provider: {type: str, required: true, description: "aws, azure, gcp, kubernetes"}
+    example: "prowler aws --list-services"
+    
+  - name: list_checks
+    description: "List all available checks"
+    template: "prowler {provider} --list-checks"
+    parameters:
+      provider: {type: str, required: true}
+    example: "prowler aws --list-checks"
+
+output_format:
+  type: multiple
+  log_format: text
+  supports_json: true
+  supports_html: true
+  supports_csv: true
+  report_formats: [json, html, csv, json-asff, json-ocsf]
+
+requires_auth: true
+requires_root: false
+ports_required: []
+
+supersedes: [scout2, cloudmapper]
+complements: [cloudsploit, scoutsuite, steampipe]
+
+known_issues:
+  - issue: "Requires cloud provider credentials configured"
+    impact: high
+    workaround: "Configure AWS CLI, Azure CLI, or gcloud CLI first"
+  - issue: "Large accounts can take significant time to scan"
+    impact: medium
+    workaround: "Use --services flag to scan specific services only"
+  - issue: "Some checks require additional IAM permissions"
+    impact: medium
+    workaround: "Review Prowler IAM policy in documentation"
+  - issue: "Rate limiting may occur on large scans"
+    impact: low
+    workaround: "Use --slow flag to reduce API call rate"
+
+success_indicators:
+  - "Executing checks"
+  - "Scan completed"
+  - "PASS"
+  - "FAIL"
+  - "Report.*generated"
+  - "Assessment Complete"
+  - "[0-9]+ findings"
+
+failure_indicators:
+  - "ERROR"
+  - "Authentication failed"
+  - "Invalid credentials"
+  - "Access denied"
+  - "Permission denied"
+  - "Could not assume role"
+
+installation:
+  pip: "pip install prowler"
+  docker: "docker pull prowler/prowler"
+  github: "git clone https://github.com/prowler-cloud/prowler && cd prowler && pip install ."
+  verify: "prowler --version"
+  post_install:
+    - "Configure AWS: aws configure"
+    - "Configure Azure: az login"
+    - "Configure GCP: gcloud auth application-default login"
+    - "Test: prowler aws --list-services"
+
+effectiveness_baseline:
+  success_rate: 0.92
+  avg_execution_time: 600
+  false_positive_rate: 0.08
+  resource_usage: medium
+  reliability: high
+  notes: "Essential for cloud security posture management; comprehensive but requires proper IAM permissions"

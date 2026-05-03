@@ -1,0 +1,115 @@
+name: docker-bench-security
+version: "1.5.0"
+category: container_security
+description: "Docker security audit script based on CIS Docker Benchmark"
+
+capabilities:
+  - docker_security_audit
+  - cis_benchmark_compliance
+  - host_configuration_check
+  - docker_daemon_check
+  - container_images_check
+  - container_runtime_check
+  - network_configuration_check
+  - security_operations_check
+  - automated_compliance
+
+target_compatibility:
+  os: [linux]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "CentOS 7+", "Any Linux with Docker"]
+  architecture: [x86_64, arm64]
+  requires_docker: true
+
+commands:
+  - name: full_audit
+    description: "Run complete Docker security audit"
+    template: "docker run --rm --net host --pid host --userns host --cap-add audit_control -e DOCKER_CONTENT_TRUST=$DOCKER_CONTENT_TRUST -v /etc:/etc:ro -v /usr/bin/containerd:/usr/bin/containerd:ro -v /usr/bin/runc:/usr/bin/runc:ro -v /usr/lib/systemd:/usr/lib/systemd:ro -v /var/lib:/var/lib:ro -v /var/run/docker.sock:/var/run/docker.sock:ro docker/docker-bench-security"
+    parameters: {}
+    example: "docker run --rm --net host --pid host ... docker/docker-bench-security"
+    
+  - name: audit_with_exclusions
+    description: "Run audit excluding specific checks"
+    template: "docker run --rm --net host --pid host --userns host --cap-add audit_control -v /etc:/etc:ro -v /var/lib:/var/lib:ro -v /var/run/docker.sock:/var/run/docker.sock:ro docker/docker-bench-security -e {exclusions}"
+    parameters:
+      exclusions: {type: str, required: true, description: "Comma-separated check IDs to exclude"}
+    example: "docker run ... docker/docker-bench-security -e check_2_1,check_2_2"
+    
+  - name: audit_include_only
+    description: "Run only specific checks"
+    template: "docker run --rm --net host --pid host --userns host --cap-add audit_control -v /etc:/etc:ro -v /var/lib:/var/lib:ro -v /var/run/docker.sock:/var/run/docker.sock:ro docker/docker-bench-security -c {checks}"
+    parameters:
+      checks: {type: str, required: true, description: "Comma-separated check IDs to run"}
+    example: "docker run ... docker/docker-bench-security -c check_1,check_2"
+    
+  - name: audit_to_log
+    description: "Run audit and save to log file"
+    template: "docker run --rm --net host --pid host --userns host --cap-add audit_control -v /etc:/etc:ro -v /var/lib:/var/lib:ro -v /var/run/docker.sock:/var/run/docker.sock:ro -v {output_dir}:/usr/share/output docker/docker-bench-security -l {log_file}"
+    parameters:
+      output_dir: {type: path, required: true}
+      log_file: {type: str, required: true}
+    example: "docker run ... -v /tmp:/usr/share/output ... -l audit.log"
+    
+  - name: audit_json_format
+    description: "Output results in JSON format"
+    template: "docker run --rm --net host --pid host --userns host --cap-add audit_control -v /etc:/etc:ro -v /var/lib:/var/lib:ro -v /var/run/docker.sock:/var/run/docker.sock:ro docker/docker-bench-security -j"
+    parameters: {}
+    example: "docker run ... docker/docker-bench-security -j"
+    
+  - name: script_mode
+    description: "Run from cloned repository"
+    template: "cd docker-bench-security && ./docker-bench-security.sh"
+    parameters: {}
+    example: "cd docker-bench-security && ./docker-bench-security.sh"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: true
+
+requires_auth: false
+requires_root: true
+ports_required: []
+
+supersedes: []
+complements: [trivy, grype, clair]
+
+known_issues:
+  - issue: "Requires Docker socket access (security consideration)"
+    impact: medium
+    workaround: "Run only in controlled environments"
+  - issue: "Some checks require specific kernel features"
+    impact: low
+    workaround: "Review failed checks for applicability"
+  - issue: "May produce false positives on non-standard Docker setups"
+    impact: low
+    workaround: "Use -e flag to exclude irrelevant checks"
+
+success_indicators:
+  - "\\[INFO\\]"
+  - "\\[PASS\\]"
+  - "\\[WARN\\]"
+  - "\\[NOTE\\]"
+  - "Section [0-9]"
+  - "Checks: [0-9]+"
+
+failure_indicators:
+  - "\\[FAIL\\]"
+  - "Could not access Docker"
+  - "Docker not running"
+  - "Permission denied"
+
+installation:
+  docker: "docker pull docker/docker-bench-security"
+  github: "git clone https://github.com/docker/docker-bench-security.git"
+  verify: "docker run --rm docker/docker-bench-security -h"
+  post_install:
+    - "Ensure Docker daemon is running"
+    - "Run with appropriate permissions (root or docker group)"
+
+effectiveness_baseline:
+  success_rate: 0.95
+  avg_execution_time: 30
+  false_positive_rate: 0.10
+  resource_usage: low
+  reliability: high

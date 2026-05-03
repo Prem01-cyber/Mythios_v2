@@ -1,0 +1,171 @@
+name: bloodhound
+version: "4.3.1"
+category: active_directory
+description: "Active Directory attack path analysis tool for identifying privilege escalation routes and hidden relationships"
+
+capabilities:
+  - ad_enumeration
+  - attack_path_discovery
+  - privilege_escalation_mapping
+  - relationship_analysis
+  - domain_trust_mapping
+  - kerberos_delegation_analysis
+  - acl_abuse_detection
+  - group_membership_analysis
+  - computer_analysis
+  - user_analysis
+  - gpo_analysis
+  - session_mapping
+  - shortest_path_calculation
+  - domain_controller_identification
+
+target_compatibility:
+  os: [linux, windows, macos]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2020+"]
+    windows: ["Windows 10+", "Windows Server 2012+"]
+    macos: ["macOS 10.13+"]
+  architecture: [x86_64]
+  target_systems: ["Windows Domain", "Active Directory"]
+
+commands:
+  - name: collect_all_bloodhound_py
+    description: "Collect all AD data using bloodhound.py (Linux)"
+    template: "bloodhound-python -u {username} -p {password} -d {domain} -dc {dc_ip} -c All -ns {nameserver}"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      domain: {type: str, required: true}
+      dc_ip: {type: ip, required: true}
+      nameserver: {type: ip, required: false}
+    example: "bloodhound-python -u user@domain.local -p Password123 -d domain.local -dc 10.10.10.10 -c All"
+    
+  - name: collect_dconly
+    description: "Collect only domain controller data"
+    template: "bloodhound-python -u {username} -p {password} -d {domain} -dc {dc_ip} -c DCOnly"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      domain: {type: str, required: true}
+      dc_ip: {type: ip, required: true}
+    example: "bloodhound-python -u user@domain.local -p Pass123 -d domain.local -dc 10.10.10.10 -c DCOnly"
+    
+  - name: collect_with_kerberos
+    description: "Collect using Kerberos authentication"
+    template: "bloodhound-python -u {username} -d {domain} -dc {dc_ip} -c All -k"
+    parameters:
+      username: {type: str, required: true}
+      domain: {type: str, required: true}
+      dc_ip: {type: ip, required: true}
+    example: "bloodhound-python -u user@domain.local -d domain.local -dc 10.10.10.10 -c All -k"
+    
+  - name: collect_computers
+    description: "Collect only computer objects"
+    template: "bloodhound-python -u {username} -p {password} -d {domain} -dc {dc_ip} -c ComputerOnly"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      domain: {type: str, required: true}
+      dc_ip: {type: ip, required: true}
+    example: "bloodhound-python -u user -p pass -d domain.local -dc 10.10.10.10 -c ComputerOnly"
+    
+  - name: collect_with_ldaps
+    description: "Collect using LDAPS (secure LDAP)"
+    template: "bloodhound-python -u {username} -p {password} -d {domain} -dc {dc_ip} -c All --use-ldaps"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      domain: {type: str, required: true}
+      dc_ip: {type: ip, required: true}
+    example: "bloodhound-python -u user -p pass -d domain.local -dc 10.10.10.10 -c All --use-ldaps"
+    
+  - name: collect_with_zip
+    description: "Collect and save to ZIP file"
+    template: "bloodhound-python -u {username} -p {password} -d {domain} -dc {dc_ip} -c All --zip"
+    parameters:
+      username: {type: str, required: true}
+      password: {type: str, required: true, sensitive: true}
+      domain: {type: str, required: true}
+      dc_ip: {type: ip, required: true}
+    example: "bloodhound-python -u user -p pass -d domain.local -dc 10.10.10.10 -c All --zip"
+    
+  - name: start_neo4j
+    description: "Start Neo4j database (required for BloodHound GUI)"
+    template: "neo4j console"
+    parameters: {}
+    example: "neo4j console"
+    
+  - name: start_bloodhound_gui
+    description: "Start BloodHound GUI application"
+    template: "bloodhound --no-sandbox"
+    parameters: {}
+    example: "bloodhound --no-sandbox"
+
+output_format:
+  type: json
+  log_format: text
+  supports_json: true
+  collection_files: ["computers.json", "users.json", "groups.json", "domains.json", "gpos.json"]
+
+requires_auth: true
+requires_root: false
+ports_required: [389, 636, 88, 445]
+
+supersedes: []
+complements: [crackmapexec, impacket, enum4linux-ng]
+
+known_issues:
+  - issue: "Neo4j memory usage can be high with large domains"
+    impact: medium
+    workaround: "Increase Neo4j heap size in neo4j.conf"
+  - issue: "BloodHound.py may miss sessions compared to SharpHound"
+    impact: medium
+    workaround: "Use SharpHound.exe from Windows for session collection"
+  - issue: "Requires valid domain credentials"
+    impact: high
+    workaround: "Use with crackmapexec for credential validation first"
+  - issue: "Large domains take significant time to enumerate"
+    impact: low
+    workaround: "Use specific collection methods (-c DCOnly) for faster recon"
+
+success_indicators:
+  - "JSON files created"
+  - "Computers enumerated: [0-9]+"
+  - "Users enumerated: [0-9]+"
+  - "Groups enumerated: [0-9]+"
+  - "Done in [0-9]+ seconds"
+  - "Compressing output"
+  - "Neo4j connection successful"
+
+failure_indicators:
+  - "Could not resolve"
+  - "Authentication failed"
+  - "Connection refused"
+  - "LDAP connection failed"
+  - "Kerberos error"
+  - "Access denied"
+  - "Unable to connect to Neo4j"
+  - "Invalid credentials"
+
+installation:
+  apt: "apt install bloodhound"
+  pip: "pip install bloodhound"
+  github: "https://github.com/BloodHoundAD/BloodHound"
+  additional_requirements:
+    - "Neo4j 4.x required for GUI"
+    - "Java 11+ for Neo4j"
+    - "bloodhound-python for Linux collection"
+  verify: "bloodhound-python --version && neo4j version"
+  post_install:
+    - "Install Neo4j: wget -O - https://debian.neo4j.com/neotechnology.gpg.key | apt-key add -"
+    - "apt install neo4j"
+    - "neo4j-admin set-initial-password bloodhound"
+    - "Download BloodHound GUI from GitHub releases"
+
+effectiveness_baseline:
+  success_rate: 0.90
+  avg_execution_time: 180
+  false_positive_rate: 0.02
+  resource_usage: medium
+  reliability: high
+  notes: "Extremely valuable for AD environments; success rate high with valid creds"

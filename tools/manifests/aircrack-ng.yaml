@@ -1,0 +1,192 @@
+name: aircrack-ng
+version: "1.7"
+category: wireless
+description: "Complete suite for wireless network auditing including packet capture, WEP/WPA/WPA2 cracking, and network analysis"
+
+capabilities:
+  - wireless_packet_capture
+  - wep_cracking
+  - wpa_handshake_capture
+  - wpa2_cracking
+  - pmkid_attack
+  - deauthentication_attack
+  - fake_authentication
+  - packet_injection
+  - monitor_mode
+  - access_point_creation
+  - wireless_scanning
+  - dictionary_attack
+  - brute_force_attack
+
+target_compatibility:
+  os: [linux, macos]
+  versions:
+    linux: ["Ubuntu 18.04+", "Debian 10+", "Kali 2018+"]
+    macos: ["macOS 10.13+"]
+  architecture: [x86_64, arm, arm64]
+  requires_wireless_card: true
+
+commands:
+  - name: enable_monitor_mode
+    description: "Enable monitor mode on wireless interface"
+    template: "airmon-ng start {interface}"
+    parameters:
+      interface: {type: str, required: true}
+    example: "airmon-ng start wlan0"
+    
+  - name: disable_monitor_mode
+    description: "Disable monitor mode"
+    template: "airmon-ng stop {interface}"
+    parameters:
+      interface: {type: str, required: true}
+    example: "airmon-ng stop wlan0mon"
+    
+  - name: scan_networks
+    description: "Scan for wireless networks"
+    template: "airodump-ng {interface}"
+    parameters:
+      interface: {type: str, required: true}
+    example: "airodump-ng wlan0mon"
+    
+  - name: capture_handshake
+    description: "Capture WPA handshake for specific AP"
+    template: "airodump-ng -c {channel} --bssid {bssid} -w {output_prefix} {interface}"
+    parameters:
+      channel: {type: int, required: true}
+      bssid: {type: str, required: true}
+      output_prefix: {type: str, required: true}
+      interface: {type: str, required: true}
+    example: "airodump-ng -c 6 --bssid AA:BB:CC:DD:EE:FF -w capture wlan0mon"
+    
+  - name: deauth_attack
+    description: "Deauthentication attack to capture handshake"
+    template: "aireplay-ng --deauth {count} -a {bssid} {interface}"
+    parameters:
+      count: {type: int, default: 10}
+      bssid: {type: str, required: true}
+      interface: {type: str, required: true}
+    example: "aireplay-ng --deauth 10 -a AA:BB:CC:DD:EE:FF wlan0mon"
+    
+  - name: deauth_client
+    description: "Deauth specific client from AP"
+    template: "aireplay-ng --deauth {count} -a {bssid} -c {client_mac} {interface}"
+    parameters:
+      count: {type: int, default: 10}
+      bssid: {type: str, required: true}
+      client_mac: {type: str, required: true}
+      interface: {type: str, required: true}
+    example: "aireplay-ng --deauth 10 -a AP:MA:C -c CL:IE:NT wlan0mon"
+    
+  - name: crack_wpa
+    description: "Crack WPA/WPA2 with dictionary"
+    template: "aircrack-ng -w {wordlist} -b {bssid} {capture_file}"
+    parameters:
+      wordlist: {type: path, required: true}
+      bssid: {type: str, required: true}
+      capture_file: {type: path, required: true}
+    example: "aircrack-ng -w rockyou.txt -b AA:BB:CC:DD:EE:FF capture-01.cap"
+    
+  - name: crack_wep
+    description: "Crack WEP encryption"
+    template: "aircrack-ng -b {bssid} {capture_file}"
+    parameters:
+      bssid: {type: str, required: true}
+      capture_file: {type: path, required: true}
+    example: "aircrack-ng -b AA:BB:CC:DD:EE:FF wep-capture-01.cap"
+    
+  - name: fake_auth
+    description: "Fake authentication with AP"
+    template: "aireplay-ng --fakeauth 0 -a {bssid} -h {our_mac} {interface}"
+    parameters:
+      bssid: {type: str, required: true}
+      our_mac: {type: str, required: true}
+      interface: {type: str, required: true}
+    example: "aireplay-ng --fakeauth 0 -a AP:MA:C -h OUR:MA:C wlan0mon"
+    
+  - name: arp_replay
+    description: "ARP replay attack for WEP cracking"
+    template: "aireplay-ng --arpreplay -b {bssid} -h {our_mac} {interface}"
+    parameters:
+      bssid: {type: str, required: true}
+      our_mac: {type: str, required: true}
+      interface: {type: str, required: true}
+    example: "aireplay-ng --arpreplay -b AP:MA:C -h OUR:MA:C wlan0mon"
+    
+  - name: packet_injection_test
+    description: "Test packet injection capability"
+    template: "aireplay-ng --test {interface}"
+    parameters:
+      interface: {type: str, required: true}
+    example: "aireplay-ng --test wlan0mon"
+    
+  - name: create_ap
+    description: "Create fake AP (requires airbase-ng)"
+    template: "airbase-ng -e {ssid} -c {channel} {interface}"
+    parameters:
+      ssid: {type: str, required: true}
+      channel: {type: int, required: true}
+      interface: {type: str, required: true}
+    example: "airbase-ng -e FakeWiFi -c 6 wlan0mon"
+
+output_format:
+  type: text
+  log_format: text
+  supports_json: false
+  capture_format: cap
+
+requires_auth: false
+requires_root: true
+ports_required: []
+
+supersedes: []
+complements: [reaver, wifite, bettercap, kismet]
+
+known_issues:
+  - issue: "Requires compatible wireless card with monitor mode and injection"
+    impact: high
+    workaround: "Use compatible cards (Atheros, Realtek RTL8812AU, etc)"
+  - issue: "Some modern WPA3 networks not supported"
+    impact: medium
+    workaround: "Use additional tools for WPA3 or focus on WPA2 targets"
+  - issue: "Handshake capture requires client connection/reconnection"
+    impact: medium
+    workaround: "Use deauth attack to force reconnection"
+  - issue: "Dictionary attacks limited by wordlist quality"
+    impact: medium
+    workaround: "Use comprehensive wordlists, custom rules, hashcat integration"
+
+success_indicators:
+  - "Monitor mode enabled"
+  - "WPA handshake.*captured"
+  - "KEY FOUND"
+  - "Aircrack-ng.*started"
+  - "Authentication successful"
+  - "Association successful"
+
+failure_indicators:
+  - "No such device"
+  - "Device not found"
+  - "Operation not supported"
+  - "Injection test failed"
+  - "No handshake"
+  - "Unable to check"
+  - "Access denied"
+
+installation:
+  apt: "apt install aircrack-ng"
+  yum: "yum install aircrack-ng"
+  brew: "brew install aircrack-ng"
+  github: "https://github.com/aircrack-ng/aircrack-ng"
+  verify: "aircrack-ng --help"
+  post_install:
+    - "Check wireless card: airmon-ng"
+    - "Install drivers if needed for your card"
+    - "Test monitor mode: airmon-ng start wlan0"
+
+effectiveness_baseline:
+  success_rate: 0.70
+  avg_execution_time: 600
+  false_positive_rate: 0.05
+  resource_usage: medium
+  reliability: medium
+  notes: "Success highly dependent on hardware compatibility and target network configuration"
