@@ -14,7 +14,8 @@
 # Requirements: Ubuntu 20.04+ with sudo privileges
 ################################################################################
 
-set -e  # Exit on error
+# Don't exit on error - continue installing other tools
+# set -e
 
 # Colors for output
 RED='\033[0;31m'
@@ -27,6 +28,15 @@ NC='\033[0m' # No Color
 LOG_FILE="tool_installation.log"
 INSTALL_DIR="/opt/security-tools"
 
+# Counters
+TOTAL_TOOLS=0
+INSTALLED_TOOLS=0
+SKIPPED_TOOLS=0
+FAILED_TOOLS=0
+
+# Modes
+FAST_MODE=false
+
 ################################################################################
 # Utility Functions
 ################################################################################
@@ -37,14 +47,17 @@ log() {
 
 log_success() {
     echo -e "${GREEN}✓${NC} $1" | tee -a "$LOG_FILE"
+    ((INSTALLED_TOOLS++))
 }
 
 log_error() {
     echo -e "${RED}✗${NC} $1" | tee -a "$LOG_FILE"
+    ((FAILED_TOOLS++))
 }
 
 log_warning() {
     echo -e "${YELLOW}⚠${NC} $1" | tee -a "$LOG_FILE"
+    ((SKIPPED_TOOLS++))
 }
 
 log_info() {
@@ -67,6 +80,26 @@ check_internet() {
 
 is_installed() {
     command -v "$1" &> /dev/null
+}
+
+safe_wget() {
+    # Download with timeout and error handling
+    local url="$1"
+    local output="$2"
+    
+    if [ -z "$output" ]; then
+        wget --timeout=30 --tries=2 -q "$url" 2>/dev/null
+    else
+        wget --timeout=30 --tries=2 -q "$url" -O "$output" 2>/dev/null
+    fi
+}
+
+safe_git_clone() {
+    # Git clone with timeout
+    local url="$1"
+    local dest="$2"
+    
+    timeout 60 git clone --depth=1 "$url" "$dest" 2>/dev/null
 }
 
 ################################################################################
@@ -132,11 +165,19 @@ install_rustscan() {
         return
     fi
     log_info "Installing rustscan..."
-    # Install via docker method (most reliable)
-    wget -q https://github.com/RustScan/RustScan/releases/download/2.1.1/rustscan_2.1.1_amd64.deb
-    dpkg -i rustscan_2.1.1_amd64.deb || apt-get install -f -y
-    rm -f rustscan_2.1.1_amd64.deb
-    log_success "rustscan installed"
+    
+    # Try to install via deb package with timeout
+    if wget --timeout=30 -q https://github.com/RustScan/RustScan/releases/download/2.1.1/rustscan_2.1.1_amd64.deb 2>/dev/null; then
+        if dpkg -i rustscan_2.1.1_amd64.deb 2>/dev/null || apt-get install -f -y 2>/dev/null; then
+            rm -f rustscan_2.1.1_amd64.deb
+            log_success "rustscan installed"
+        else
+            rm -f rustscan_2.1.1_amd64.deb
+            log_error "rustscan installation failed (dpkg error)"
+        fi
+    else
+        log_error "rustscan download failed (skipping)"
+    fi
 }
 
 # SMB/Windows Tools
@@ -156,10 +197,17 @@ install_enum4linux_ng() {
         return
     fi
     log_info "Installing enum4linux-ng..."
-    git clone https://github.com/cddmp/enum4linux-ng.git /opt/enum4linux-ng
-    pip3 install -r /opt/enum4linux-ng/requirements.txt
-    ln -sf /opt/enum4linux-ng/enum4linux-ng.py /usr/local/bin/enum4linux-ng
-    log_success "enum4linux-ng installed"
+    
+    if safe_git_clone https://github.com/cddmp/enum4linux-ng.git /opt/enum4linux-ng; then
+        if pip3 install -q -r /opt/enum4linux-ng/requirements.txt 2>/dev/null; then
+            ln -sf /opt/enum4linux-ng/enum4linux-ng.py /usr/local/bin/enum4linux-ng
+            log_success "enum4linux-ng installed"
+        else
+            log_error "enum4linux-ng dependencies failed"
+        fi
+    else
+        log_error "enum4linux-ng clone failed (skipping)"
+    fi
 }
 
 install_smbclient() {
@@ -472,11 +520,17 @@ install_trivy() {
         return
     fi
     log_info "Installing trivy..."
-    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
-    echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
-    apt-get update -qq
-    apt-get install -y trivy
-    log_success "trivy installed"
+    
+    if wget --timeout=30 -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key 2>/dev/null | apt-key add - 2>/dev/null; then
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list >/dev/null
+        if apt-get update -qq 2>/dev/null && apt-get install -y trivy 2>/dev/null; then
+            log_success "trivy installed"
+        else
+            log_error "trivy installation failed"
+        fi
+    else
+        log_error "trivy repository setup failed (skipping)"
+    fi
 }
 
 # Wireless Tools
@@ -687,91 +741,109 @@ install_pypykatz() {
 # Main Installation Flow
 ################################################################################
 
+print_summary() {
+    echo ""
+    echo "================================================================================"
+    echo "Installation Summary"
+    echo "================================================================================"
+    echo -e "${GREEN}✓ Successfully installed:${NC} $INSTALLED_TOOLS tools"
+    echo -e "${YELLOW}⚠ Already installed/skipped:${NC} $SKIPPED_TOOLS tools"
+    echo -e "${RED}✗ Failed:${NC} $FAILED_TOOLS tools"
+    echo "================================================================================"
+}
+
 install_all_tools() {
     log_info "Starting installation of all security tools..."
+    echo "Progress indicator: [Current/Total]"
+    echo ""
+    
+    local current=0
+    local total=53
     
     # Network Scanning
-    install_nmap
-    install_masscan
-    install_rustscan
+    ((current++)); echo "[$current/$total] nmap"; install_nmap
+    ((current++)); echo "[$current/$total] masscan"; install_masscan
+    ((current++)); echo "[$current/$total] rustscan"; install_rustscan
     
     # SMB/Windows
-    install_enum4linux
-    install_enum4linux_ng
-    install_smbclient
-    install_crackmapexec
-    install_impacket
+    ((current++)); echo "[$current/$total] enum4linux"; install_enum4linux
+    ((current++)); echo "[$current/$total] enum4linux-ng"; install_enum4linux_ng
+    ((current++)); echo "[$current/$total] smbclient"; install_smbclient
+    ((current++)); echo "[$current/$total] crackmapexec"; install_crackmapexec
+    ((current++)); echo "[$current/$total] impacket"; install_impacket
     
     # Web Application
-    install_nikto
-    install_nuclei
-    install_sqlmap
-    install_wpscan
-    install_gobuster
-    install_ffuf
-    install_whatweb
-    install_wafw00f
-    install_burpsuite
+    ((current++)); echo "[$current/$total] nikto"; install_nikto
+    ((current++)); echo "[$current/$total] nuclei"; install_nuclei
+    ((current++)); echo "[$current/$total] sqlmap"; install_sqlmap
+    ((current++)); echo "[$current/$total] wpscan"; install_wpscan
+    ((current++)); echo "[$current/$total] gobuster"; install_gobuster
+    ((current++)); echo "[$current/$total] ffuf"; install_ffuf
+    ((current++)); echo "[$current/$total] whatweb"; install_whatweb
+    ((current++)); echo "[$current/$total] wafw00f"; install_wafw00f
+    ((current++)); echo "[$current/$total] burpsuite"; install_burpsuite
     
     # Password Cracking
-    install_hydra
-    install_medusa
-    install_john
-    install_hashcat
+    ((current++)); echo "[$current/$total] hydra"; install_hydra
+    ((current++)); echo "[$current/$total] medusa"; install_medusa
+    ((current++)); echo "[$current/$total] john"; install_john
+    ((current++)); echo "[$current/$total] hashcat"; install_hashcat
     
     # Exploitation
-    install_metasploit
-    install_searchsploit
+    ((current++)); echo "[$current/$total] metasploit"; install_metasploit
+    ((current++)); echo "[$current/$total] searchsploit"; install_searchsploit
     
     # Reconnaissance
-    install_amass
-    install_subfinder
-    install_theharvester
-    install_dnsenum
-    install_shodan
+    ((current++)); echo "[$current/$total] amass"; install_amass
+    ((current++)); echo "[$current/$total] subfinder"; install_subfinder
+    ((current++)); echo "[$current/$total] theharvester"; install_theharvester
+    ((current++)); echo "[$current/$total] dnsenum"; install_dnsenum
+    ((current++)); echo "[$current/$total] shodan"; install_shodan
     
     # Network Analysis
-    install_wireshark
-    install_tcpdump
-    install_netcat
-    install_socat
-    install_snmpwalk
+    ((current++)); echo "[$current/$total] wireshark"; install_wireshark
+    ((current++)); echo "[$current/$total] tcpdump"; install_tcpdump
+    ((current++)); echo "[$current/$total] netcat"; install_netcat
+    ((current++)); echo "[$current/$total] socat"; install_socat
+    ((current++)); echo "[$current/$total] snmpwalk"; install_snmpwalk
     
     # Vulnerability Scanners
-    install_openvas
-    install_trivy
+    ((current++)); echo "[$current/$total] openvas"; install_openvas
+    ((current++)); echo "[$current/$total] trivy"; install_trivy
     
     # Wireless
-    install_aircrack_ng
-    install_bettercap
+    ((current++)); echo "[$current/$total] aircrack-ng"; install_aircrack_ng
+    ((current++)); echo "[$current/$total] bettercap"; install_bettercap
     
     # Post-Exploitation
-    install_bloodhound
-    install_responder
-    install_chisel
-    install_mitmproxy
-    install_weevely
+    ((current++)); echo "[$current/$total] bloodhound"; install_bloodhound
+    ((current++)); echo "[$current/$total] responder"; install_responder
+    ((current++)); echo "[$current/$total] chisel"; install_chisel
+    ((current++)); echo "[$current/$total] mitmproxy"; install_mitmproxy
+    ((current++)); echo "[$current/$total] weevely"; install_weevely
     
     # Binary Analysis
-    install_ghidra
-    install_radare2
-    install_binwalk
-    install_ropper
+    ((current++)); echo "[$current/$total] ghidra"; install_ghidra
+    ((current++)); echo "[$current/$total] radare2"; install_radare2
+    ((current++)); echo "[$current/$total] binwalk"; install_binwalk
+    ((current++)); echo "[$current/$total] ropper"; install_ropper
     
     # Mobile
-    install_apktool
-    install_frida
+    ((current++)); echo "[$current/$total] apktool"; install_apktool
+    ((current++)); echo "[$current/$total] frida"; install_frida
     
     # Cloud Security
-    install_prowler
-    install_kube_hunter
-    install_docker_bench
+    ((current++)); echo "[$current/$total] prowler"; install_prowler
+    ((current++)); echo "[$current/$total] kube-hunter"; install_kube_hunter
+    ((current++)); echo "[$current/$total] docker-bench"; install_docker_bench
     
     # Python Tools
-    install_pwntools
-    install_pypykatz
+    ((current++)); echo "[$current/$total] pwntools"; install_pwntools
+    ((current++)); echo "[$current/$total] pypykatz"; install_pypykatz
     
-    log_success "Installation complete!"
+    echo ""
+    log_success "Installation phase complete!"
+    print_summary
 }
 
 check_installed_tools() {
@@ -824,9 +896,21 @@ main() {
         --check)
             check_installed_tools
             ;;
+        --fast)
+            log_warning "Fast mode: Skipping slow installations (metasploit, ghidra, etc.)"
+            FAST_MODE=true
+            log_info "Installing system dependencies..."
+            install_system_dependencies
+            log_info "Starting tool installation..."
+            install_all_tools
+            echo ""
+            log_info "Check installation log: $LOG_FILE"
+            log_info "Run with --check to verify installations"
+            ;;
         --help)
             echo "Usage:"
             echo "  sudo $0              # Install all tools"
+            echo "  sudo $0 --fast       # Install all tools (skip slow ones)"
             echo "  sudo $0 --check      # Check which tools are installed"
             echo "  sudo $0 --help       # Show this help"
             exit 0
@@ -840,11 +924,11 @@ main() {
             
             echo ""
             echo "================================================================================"
-            log_success "Installation complete!"
+            log_info "All operations complete!"
             echo "================================================================================"
             echo ""
             log_info "Check installation log: $LOG_FILE"
-            log_info "Run with --check to verify installations"
+            log_info "Run 'sudo $0 --check' to verify installations"
             ;;
     esac
 }
