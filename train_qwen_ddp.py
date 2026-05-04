@@ -643,6 +643,12 @@ def train(config: TrainingConfig):
         else:
             model = DDP(model, device_ids=[local_rank], output_device=local_rank)
         
+        # Enable static graph for DDP + gradient checkpointing compatibility
+        if config.gradient_checkpointing:
+            model._set_static_graph()
+            if rank == 0:
+                logging.info("✓ Static graph enabled for DDP + gradient checkpointing")
+        
         if rank == 0:
             logging.info("✓ DDP initialized")
     
