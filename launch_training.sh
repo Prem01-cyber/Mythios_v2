@@ -1,15 +1,16 @@
 #!/bin/bash
-# Launch script for Qwen CVE Expert DDP Training
+# Launch script for Qwen Multi-Task Security Expert DDP Training
 
 set -e
 
 echo "=========================================="
-echo "Qwen CVE Expert - DDP Training Launcher"
+echo "Qwen Multi-Task Security Expert"
+echo "DDP Training Launcher"
 echo "=========================================="
 
 # Default values
 NUM_GPUS=${NUM_GPUS:-4}
-CONFIG_FILE=${CONFIG_FILE:-"config/training_config.yaml"}
+CONFIG_FILE=${CONFIG_FILE:-"config/multitask_training_config.yaml"}
 MASTER_PORT=${MASTER_PORT:-29500}
 
 # Parse command line arguments
