@@ -7,7 +7,7 @@ model_name: "Qwen/Qwen2.5-7B-Instruct"
 # Data paths (multi-task data)
 train_data_path: "vuln_data/multitask_data/train.jsonl"
 val_data_path: "vuln_data/multitask_data/val.jsonl"
-max_seq_length: 2048
+max_seq_length: 512  # Reduced to 512 for memory constraints (was 2048)
 
 # Training hyperparameters
 num_epochs: 3
@@ -53,6 +53,9 @@ use_quantization: true
 quantization_bits: 4  # 4-bit quantization (saves ~75% memory)
 quantization_type: "nf4"  # NormalFloat4 (recommended for fine-tuning)
 use_double_quant: true  # Extra memory savings
+
+# Memory optimizations
+gradient_checkpointing: true  # Trade compute for memory (saves ~40% memory)
 
 # Other
 seed: 42

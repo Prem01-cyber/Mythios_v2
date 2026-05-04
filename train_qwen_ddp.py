@@ -101,6 +101,9 @@ class TrainingConfig:
     quantization_type: str = "nf4"  # "nf4" or "fp4"
     use_double_quant: bool = True  # Double quantization for extra memory savings
     
+    # Memory optimizations
+    gradient_checkpointing: bool = False  # Trade compute for memory
+    
     # Optimization
     optim: str = "adamw_torch"
     adam_beta1: float = 0.9
@@ -273,6 +276,12 @@ def load_model_and_tokenizer(config: TrainingConfig, device, rank: int = 0):
         
         if config.use_quantization:
             logging.info(f"Memory footprint reduced by ~{100 * (1 - config.quantization_bits/16):.0f}% with {config.quantization_bits}-bit quantization")
+    
+    # Enable gradient checkpointing if requested
+    if config.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
+        if rank == 0:
+            logging.info("✓ Gradient checkpointing enabled (trades compute for ~40% memory savings)")
     
     return model, tokenizer
 
