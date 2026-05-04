@@ -76,7 +76,6 @@ class TrainingConfig:
         "CODE_ANALYSIS": 0.30,
         "FIX": 0.10
     })
-    use_task_weighting: bool = True
     
     # DDP settings
     backend: str = "nccl"  # nccl for NVIDIA GPUs
@@ -378,8 +377,7 @@ def save_checkpoint(
 def calculate_task_weighted_loss(
     loss: torch.Tensor,
     task_types: List[str],
-    task_weights: Dict[str, float],
-    use_weighting: bool = True
+    task_weights: Dict[str, float]
 ) -> torch.Tensor:
     """
     Calculate task-weighted loss for multi-task learning
@@ -388,12 +386,11 @@ def calculate_task_weighted_loss(
         loss: Base loss from model
         task_types: List of task types in batch
         task_weights: Dict mapping task to weight
-        use_weighting: Whether to apply task weighting
     
     Returns:
         Weighted loss
     """
-    if not use_weighting or len(task_types) == 0:
+    if not task_weights or len(task_types) == 0:
         return loss
     
     # Calculate average weight for this batch
@@ -479,7 +476,7 @@ def train(config: TrainingConfig):
         logging.info(f"Learning rate: {config.learning_rate}")
         logging.info(f"Epochs: {config.num_epochs}")
         
-        if config.use_task_weighting:
+        if config.task_weights:
             logging.info("\nTask Weights:")
             for task, weight in sorted(config.task_weights.items()):
                 logging.info(f"  {task:20s}: {weight:.2f}")
@@ -556,13 +553,12 @@ def train(config: TrainingConfig):
             
             base_loss = outputs.loss
             
-            # Apply task weighting
-            if config.use_task_weighting and task_types:
+            # Apply task weighting if task_weights are provided
+            if config.task_weights and task_types:
                 weighted_loss = calculate_task_weighted_loss(
                     base_loss,
                     task_types,
-                    config.task_weights,
-                    config.use_task_weighting
+                    config.task_weights
                 )
             else:
                 weighted_loss = base_loss
