@@ -617,11 +617,32 @@ def train(config: TrainingConfig):
     if rank == 0:
         logging.info("✓ Model loaded successfully")
     
+    # Clear GPU cache before DDP to free memory
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    
     # Wrap with DDP
     if world_size > 1:
         if rank == 0:
             logging.info("Wrapping model with DDP...")
-        model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+        
+        # For LoRA + quantization, use special DDP settings to avoid OOM
+        if config.use_lora and config.use_quantization:
+            if rank == 0:
+                logging.info("Using memory-optimized DDP settings for LoRA + quantization")
+            
+            # Only synchronize LoRA parameters, not the frozen base model
+            model = DDP(
+                model, 
+                device_ids=[local_rank], 
+                output_device=local_rank,
+                find_unused_parameters=True,  # Only sync trainable params
+                broadcast_buffers=False,  # Don't sync buffers
+                bucket_cap_mb=1  # Use very small buckets (default 25MB)
+            )
+        else:
+            model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+        
         if rank == 0:
             logging.info("✓ DDP initialized")
     

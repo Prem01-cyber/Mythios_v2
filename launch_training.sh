@@ -64,6 +64,7 @@ mkdir -p checkpoints
 # Set environment variables
 export OMP_NUM_THREADS=8
 export TOKENIZERS_PARALLELISM=false
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # Reduce memory fragmentation
 
 # Launch training
 echo "Starting training with torchrun..."
