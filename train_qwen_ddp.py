@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """
-Distributed Data Parallel (DDP) Fine-Tuning for Qwen on CVE Data
+Distributed Data Parallel (DDP) Multi-Task Fine-Tuning for Qwen Security Expert
 
-This script fine-tunes Qwen using PyTorch DDP across multiple GPUs to create
-a vulnerability-aware security expert model.
+This script fine-tunes Qwen using PyTorch DDP across multiple GPUs on 4 security tasks:
+1. [CLASSIFY] - Binary vulnerability classification
+2. [CVE_LOOKUP] - CVE identification and analysis
+3. [CODE_ANALYSIS] - Deep vulnerability analysis
+4. [FIX] - Remediation guidance
+
+Supports task-specific loss weighting and per-task metrics tracking.
 
 Usage:
     # Single node, 4 GPUs
-    torchrun --nproc_per_node=4 train_qwen_ddp.py --config config.yaml
+    torchrun --nproc_per_node=4 train_qwen_ddp.py --config config/multitask_training_config.yaml
     
     # Multi-node (if needed)
     torchrun --nnodes=2 --nproc_per_node=4 --node_rank=0 --master_addr=<addr> train_qwen_ddp.py
@@ -45,13 +50,13 @@ logging.basicConfig(
 
 @dataclass
 class TrainingConfig:
-    """Training configuration"""
+    """Training configuration for multi-task learning"""
     # Model
     model_name: str = "Qwen/Qwen2.5-7B-Instruct"
     
     # Data
-    train_data_path: str = "vuln_data/instruction_data/train.jsonl"
-    val_data_path: str = "vuln_data/instruction_data/val.jsonl"
+    train_data_path: str = "vuln_data/multitask_data/train.jsonl"
+    val_data_path: str = "vuln_data/multitask_data/val.jsonl"
     max_seq_length: int = 2048
     
     # Training hyperparameters
@@ -64,11 +69,20 @@ class TrainingConfig:
     max_grad_norm: float = 1.0
     weight_decay: float = 0.01
     
+    # Multi-task settings
+    task_weights: Dict[str, float] = field(default_factory=lambda: {
+        "CLASSIFY": 0.20,
+        "CVE_LOOKUP": 0.40,
+        "CODE_ANALYSIS": 0.30,
+        "FIX": 0.10
+    })
+    use_task_weighting: bool = True
+    
     # DDP settings
     backend: str = "nccl"  # nccl for NVIDIA GPUs
     
     # Checkpointing
-    output_dir: str = "checkpoints/qwen-cve-expert"
+    output_dir: str = "checkpoints/qwen-security-expert-multitask"
     save_steps: int = 2000
     save_total_limit: int = 3
     
@@ -76,7 +90,7 @@ class TrainingConfig:
     logging_steps: int = 50
     eval_steps: int = 1000
     use_wandb: bool = True
-    wandb_project: str = "qwen-cve-finetuning"
+    wandb_project: str = "qwen-multitask-security"
     
     # Mixed precision
     fp16: bool = True  # Use mixed precision training
@@ -92,9 +106,10 @@ class TrainingConfig:
     dataloader_num_workers: int = 4
 
 
-class CVEInstructionDataset(Dataset):
+class MultiTaskSecurityDataset(Dataset):
     """
-    Dataset for CVE instruction-response pairs
+    Dataset for multi-task security training
+    Handles: CLASSIFY, CVE_LOOKUP, CODE_ANALYSIS, FIX tasks
     """
     
     def __init__(
@@ -110,9 +125,20 @@ class CVEInstructionDataset(Dataset):
         self.examples = []
         with open(data_path, 'r') as f:
             for line in f:
-                self.examples.append(json.loads(line))
+                example = json.loads(line)
+                self.examples.append(example)
+        
+        # Count tasks
+        task_counts = {}
+        for ex in self.examples:
+            task = ex.get('task_type', 'UNKNOWN')
+            task_counts[task] = task_counts.get(task, 0) + 1
         
         logging.info(f"Loaded {len(self.examples)} examples from {data_path}")
+        logging.info("Task distribution:")
+        for task, count in sorted(task_counts.items()):
+            pct = (count / len(self.examples)) * 100
+            logging.info(f"  {task}: {count:,} ({pct:.1f}%)")
     
     def __len__(self):
         return len(self.examples)
@@ -145,10 +171,14 @@ class CVEInstructionDataset(Dataset):
         labels = input_ids.clone()
         labels[attention_mask == 0] = -100
         
+        # Get task type for loss weighting
+        task_type = example.get('task_type', 'UNKNOWN')
+        
         return {
             'input_ids': input_ids,
             'attention_mask': attention_mask,
-            'labels': labels
+            'labels': labels,
+            'task_type': task_type
         }
 
 
@@ -212,16 +242,16 @@ def create_dataloaders(
     rank: int,
     world_size: int
 ):
-    """Create distributed dataloaders"""
+    """Create distributed dataloaders for multi-task training"""
     
     # Create datasets
-    train_dataset = CVEInstructionDataset(
+    train_dataset = MultiTaskSecurityDataset(
         data_path=config.train_data_path,
         tokenizer=tokenizer,
         max_length=config.max_seq_length
     )
     
-    val_dataset = CVEInstructionDataset(
+    val_dataset = MultiTaskSecurityDataset(
         data_path=config.val_data_path,
         tokenizer=tokenizer,
         max_length=config.max_seq_length
@@ -345,11 +375,43 @@ def save_checkpoint(
             shutil.rmtree(old_checkpoint)
 
 
-def evaluate(model, val_loader, device, rank):
-    """Run evaluation"""
+def calculate_task_weighted_loss(
+    loss: torch.Tensor,
+    task_types: List[str],
+    task_weights: Dict[str, float],
+    use_weighting: bool = True
+) -> torch.Tensor:
+    """
+    Calculate task-weighted loss for multi-task learning
+    
+    Args:
+        loss: Base loss from model
+        task_types: List of task types in batch
+        task_weights: Dict mapping task to weight
+        use_weighting: Whether to apply task weighting
+    
+    Returns:
+        Weighted loss
+    """
+    if not use_weighting or len(task_types) == 0:
+        return loss
+    
+    # Calculate average weight for this batch
+    batch_weights = [task_weights.get(task, 1.0) for task in task_types]
+    avg_weight = sum(batch_weights) / len(batch_weights)
+    
+    return loss * avg_weight
+
+
+def evaluate(model, val_loader, device, rank, config: TrainingConfig = None):
+    """Run evaluation with per-task metrics"""
     model.eval()
     total_loss = 0
     total_steps = 0
+    
+    # Per-task metrics
+    task_losses = {}
+    task_counts = {}
     
     with torch.no_grad():
         for batch in val_loader:
@@ -357,6 +419,7 @@ def evaluate(model, val_loader, device, rank):
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
+            task_types = batch.get('task_type', [])
             
             # Forward pass
             outputs = model(
@@ -366,10 +429,26 @@ def evaluate(model, val_loader, device, rank):
             )
             
             loss = outputs.loss
+            
+            # Track per-task loss
+            if isinstance(task_types, list):
+                for task in task_types:
+                    if task not in task_losses:
+                        task_losses[task] = 0
+                        task_counts[task] = 0
+                    task_losses[task] += loss.item()
+                    task_counts[task] += 1
+            
             total_loss += loss.item()
             total_steps += 1
     
     avg_loss = total_loss / total_steps if total_steps > 0 else 0
+    
+    # Calculate per-task average losses
+    task_avg_losses = {}
+    for task in task_losses:
+        if task_counts[task] > 0:
+            task_avg_losses[task] = task_losses[task] / task_counts[task]
     
     # Average across all GPUs
     if dist.is_initialized():
@@ -377,7 +456,7 @@ def evaluate(model, val_loader, device, rank):
         dist.all_reduce(avg_loss_tensor, op=dist.ReduceOp.AVG)
         avg_loss = avg_loss_tensor.item()
     
-    return avg_loss
+    return avg_loss, task_avg_losses
 
 
 def train(config: TrainingConfig):
@@ -391,7 +470,7 @@ def train(config: TrainingConfig):
     
     if rank == 0:
         logging.info("="*60)
-        logging.info("Qwen CVE Expert - DDP Fine-Tuning")
+        logging.info("Qwen Multi-Task Security Expert - DDP Fine-Tuning")
         logging.info("="*60)
         logging.info(f"World Size: {world_size}")
         logging.info(f"Per-device batch size: {config.per_device_train_batch_size}")
@@ -399,6 +478,12 @@ def train(config: TrainingConfig):
         logging.info(f"Effective batch size: {config.per_device_train_batch_size * world_size * config.gradient_accumulation_steps}")
         logging.info(f"Learning rate: {config.learning_rate}")
         logging.info(f"Epochs: {config.num_epochs}")
+        
+        if config.use_task_weighting:
+            logging.info("\nTask Weights:")
+            for task, weight in sorted(config.task_weights.items()):
+                logging.info(f"  {task:20s}: {weight:.2f}")
+        
         logging.info("="*60)
         
         # Initialize wandb
@@ -451,11 +536,16 @@ def train(config: TrainingConfig):
         else:
             progress_bar = train_loader
         
+        # Per-task loss tracking
+        task_losses = {}
+        task_counts = {}
+        
         for step, batch in enumerate(progress_bar):
             # Move to device
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
+            task_types = batch.get('task_type', [])
             
             # Forward pass
             outputs = model(
@@ -464,10 +554,32 @@ def train(config: TrainingConfig):
                 labels=labels
             )
             
-            loss = outputs.loss / config.gradient_accumulation_steps
+            base_loss = outputs.loss
+            
+            # Apply task weighting
+            if config.use_task_weighting and task_types:
+                weighted_loss = calculate_task_weighted_loss(
+                    base_loss,
+                    task_types,
+                    config.task_weights,
+                    config.use_task_weighting
+                )
+            else:
+                weighted_loss = base_loss
+            
+            loss = weighted_loss / config.gradient_accumulation_steps
             loss.backward()
             
             epoch_loss += loss.item()
+            
+            # Track per-task loss
+            if task_types:
+                for task in task_types:
+                    if task not in task_losses:
+                        task_losses[task] = 0
+                        task_counts[task] = 0
+                    task_losses[task] += base_loss.item()
+                    task_counts[task] += 1
             
             # Gradient accumulation
             if (step + 1) % config.gradient_accumulation_steps == 0:
@@ -486,37 +598,71 @@ def train(config: TrainingConfig):
                     current_lr = scheduler.get_last_lr()[0]
                     avg_loss = epoch_loss / config.logging_steps
                     
-                    logging.info(
+                    # Calculate per-task losses
+                    task_avg_losses = {}
+                    for task in task_losses:
+                        if task_counts[task] > 0:
+                            task_avg_losses[task] = task_losses[task] / task_counts[task]
+                    
+                    log_msg = (
                         f"Step {global_step}/{total_steps} | "
                         f"Loss: {avg_loss:.4f} | "
                         f"LR: {current_lr:.2e}"
                     )
                     
+                    # Add per-task losses to log
+                    if task_avg_losses:
+                        task_loss_str = " | ".join([f"{task}: {loss:.4f}" 
+                                                     for task, loss in sorted(task_avg_losses.items())])
+                        log_msg += f" | Task Losses: {task_loss_str}"
+                    
+                    logging.info(log_msg)
+                    
                     if config.use_wandb:
-                        wandb.log({
+                        wandb_log = {
                             'train/loss': avg_loss,
                             'train/learning_rate': current_lr,
                             'train/epoch': epoch,
                             'train/global_step': global_step
-                        })
+                        }
+                        # Add per-task losses
+                        for task, loss in task_avg_losses.items():
+                            wandb_log[f'train/loss_{task}'] = loss
+                        
+                        wandb.log(wandb_log)
                     
                     epoch_loss = 0
+                    task_losses.clear()
+                    task_counts.clear()
                 
                 # Evaluation
                 if global_step % config.eval_steps == 0:
                     if rank == 0:
                         logging.info("Running evaluation...")
                     
-                    val_loss = evaluate(model, val_loader, device, rank)
+                    val_loss, val_task_losses = evaluate(model, val_loader, device, rank, config)
                     
                     if rank == 0:
-                        logging.info(f"Validation Loss: {val_loss:.4f}")
+                        log_msg = f"Validation Loss: {val_loss:.4f}"
+                        
+                        # Add per-task validation losses
+                        if val_task_losses:
+                            task_loss_str = " | ".join([f"{task}: {loss:.4f}" 
+                                                         for task, loss in sorted(val_task_losses.items())])
+                            log_msg += f" | Task Losses: {task_loss_str}"
+                        
+                        logging.info(log_msg)
                         
                         if config.use_wandb:
-                            wandb.log({
+                            wandb_log = {
                                 'val/loss': val_loss,
                                 'val/step': global_step
-                            })
+                            }
+                            # Add per-task validation losses
+                            for task, loss in val_task_losses.items():
+                                wandb_log[f'val/loss_{task}'] = loss
+                            
+                            wandb.log(wandb_log)
                         
                         # Save best model
                         if val_loss < best_val_loss:
@@ -550,20 +696,30 @@ def train(config: TrainingConfig):
     if rank == 0:
         logging.info("Running final evaluation...")
     
-    final_val_loss = evaluate(model, val_loader, device, rank)
+    final_val_loss, final_task_losses = evaluate(model, val_loader, device, rank, config)
     
     if rank == 0:
         logging.info("="*60)
         logging.info("Training Complete!")
         logging.info(f"Final Validation Loss: {final_val_loss:.4f}")
         logging.info(f"Best Validation Loss: {best_val_loss:.4f}")
+        
+        if final_task_losses:
+            logging.info("\nFinal Per-Task Losses:")
+            for task, loss in sorted(final_task_losses.items()):
+                logging.info(f"  {task:20s}: {loss:.4f}")
+        
         logging.info("="*60)
         
         if config.use_wandb:
-            wandb.log({
+            wandb_log = {
                 'final/val_loss': final_val_loss,
                 'final/best_val_loss': best_val_loss
-            })
+            }
+            for task, loss in final_task_losses.items():
+                wandb_log[f'final/loss_{task}'] = loss
+            
+            wandb.log(wandb_log)
             wandb.finish()
     
     # Cleanup
