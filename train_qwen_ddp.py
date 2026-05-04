@@ -29,7 +29,8 @@ from transformers import (
     AutoTokenizer, 
     AutoModelForCausalLM,
     get_cosine_schedule_with_warmup,
-    TrainingArguments
+    TrainingArguments,
+    BitsAndBytesConfig
 )
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -93,6 +94,12 @@ class TrainingConfig:
     
     # Mixed precision
     fp16: bool = True  # Use mixed precision training
+    
+    # Quantization settings (for memory-constrained GPUs)
+    use_quantization: bool = False
+    quantization_bits: int = 4  # 4-bit or 8-bit
+    quantization_type: str = "nf4"  # "nf4" or "fp4"
+    use_double_quant: bool = True  # Double quantization for extra memory savings
     
     # Optimization
     optim: str = "adamw_torch"
@@ -206,8 +213,11 @@ def cleanup_ddp():
 
 
 def load_model_and_tokenizer(config: TrainingConfig, device):
-    """Load Qwen model and tokenizer"""
+    """Load Qwen model and tokenizer with optional quantization"""
     logging.info(f"Loading model: {config.model_name}")
+    
+    if config.use_quantization:
+        logging.info(f"Using {config.quantization_bits}-bit quantization ({config.quantization_type})")
     
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -220,17 +230,38 @@ def load_model_and_tokenizer(config: TrainingConfig, device):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
+    # Prepare quantization config if enabled
+    quantization_config = None
+    if config.use_quantization:
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=(config.quantization_bits == 4),
+            load_in_8bit=(config.quantization_bits == 8),
+            bnb_4bit_quant_type=config.quantization_type,  # "nf4" or "fp4"
+            bnb_4bit_compute_dtype=torch.float16 if config.fp16 else torch.float32,
+            bnb_4bit_use_double_quant=config.use_double_quant,  # Double quantization
+        )
+    
     # Load model
     model = AutoModelForCausalLM.from_pretrained(
         config.model_name,
         trust_remote_code=True,
+        quantization_config=quantization_config,
         torch_dtype=torch.float16 if config.fp16 else torch.float32,
-        device_map=None  # We'll handle device placement with DDP
+        device_map=None if not config.use_quantization else {"": device}  # Quantized models need device_map
     )
     
-    model = model.to(device)
+    # Only move to device if not using quantization (quantization handles device placement)
+    if not config.use_quantization:
+        model = model.to(device)
     
-    logging.info(f"Model loaded: {sum(p.numel() for p in model.parameters()) / 1e9:.2f}B parameters")
+    # Count parameters
+    total_params = sum(p.numel() for p in model.parameters()) / 1e9
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e9
+    
+    logging.info(f"Model loaded: {total_params:.2f}B total parameters, {trainable_params:.2f}B trainable")
+    
+    if config.use_quantization:
+        logging.info(f"Memory footprint reduced by ~{100 * (1 - config.quantization_bits/16):.0f}% with {config.quantization_bits}-bit quantization")
     
     return model, tokenizer
 

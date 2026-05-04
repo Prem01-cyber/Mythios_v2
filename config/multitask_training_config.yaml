@@ -11,9 +11,9 @@ max_seq_length: 2048
 
 # Training hyperparameters
 num_epochs: 3
-per_device_train_batch_size: 2
-per_device_eval_batch_size: 4
-gradient_accumulation_steps: 4  # Effective batch = 2 * 4 GPUs * 4 = 32
+per_device_train_batch_size: 1  # Reduced for memory constraints
+per_device_eval_batch_size: 2
+gradient_accumulation_steps: 8  # Effective batch = 1 * 4 GPUs * 8 = 32
 learning_rate: 2.0e-5
 warmup_steps: 500
 max_grad_norm: 1.0
@@ -47,6 +47,12 @@ optim: "adamw_torch"
 adam_beta1: 0.9
 adam_beta2: 0.999
 adam_epsilon: 1.0e-8
+
+# Quantization (for memory-constrained GPUs < 16GB)
+use_quantization: true
+quantization_bits: 4  # 4-bit quantization (saves ~75% memory)
+quantization_type: "nf4"  # NormalFloat4 (recommended for fine-tuning)
+use_double_quant: true  # Extra memory savings
 
 # Other
 seed: 42
