@@ -549,7 +549,8 @@ def train(config: TrainingConfig):
             wandb.init(
                 project=config.wandb_project,
                 config=config.__dict__,
-                name=f"qwen-cve-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                name=f"qwen-cve-{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                mode="disabled"  # Disable W&B to prevent interactive prompts
             )
     
     # Load model and tokenizer
