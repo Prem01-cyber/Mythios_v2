@@ -32,6 +32,7 @@ from transformers import (
     TrainingArguments,
     BitsAndBytesConfig
 )
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from pathlib import Path
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
@@ -103,6 +104,16 @@ class TrainingConfig:
     
     # Memory optimizations
     gradient_checkpointing: bool = False  # Trade compute for memory
+    
+    # LoRA/PEFT settings (for efficient fine-tuning)
+    use_lora: bool = False
+    lora_r: int = 16  # LoRA rank
+    lora_alpha: int = 32  # LoRA alpha scaling
+    lora_dropout: float = 0.05
+    lora_target_modules: List[str] = field(default_factory=lambda: [
+        "q_proj", "k_proj", "v_proj", "o_proj",
+        "gate_proj", "up_proj", "down_proj"
+    ])
     
     # Optimization
     optim: str = "adamw_torch"
@@ -282,6 +293,37 @@ def load_model_and_tokenizer(config: TrainingConfig, device, rank: int = 0):
         model.gradient_checkpointing_enable()
         if rank == 0:
             logging.info("✓ Gradient checkpointing enabled (trades compute for ~40% memory savings)")
+    
+    # Apply LoRA if enabled
+    if config.use_lora:
+        if rank == 0:
+            logging.info(f"Applying LoRA (rank={config.lora_r}, alpha={config.lora_alpha})...")
+        
+        # Prepare model for k-bit training if quantized
+        if config.use_quantization:
+            model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=config.gradient_checkpointing)
+        
+        # Configure LoRA
+        lora_config = LoraConfig(
+            r=config.lora_r,
+            lora_alpha=config.lora_alpha,
+            target_modules=config.lora_target_modules,
+            lora_dropout=config.lora_dropout,
+            bias="none",
+            task_type="CAUSAL_LM"
+        )
+        
+        # Apply LoRA
+        model = get_peft_model(model, lora_config)
+        
+        if rank == 0:
+            # Count trainable parameters after LoRA
+            trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6
+            total_params = sum(p.numel() for p in model.parameters()) / 1e9
+            trainable_pct = (trainable_params * 1e6) / (total_params * 1e9) * 100
+            
+            logging.info(f"✓ LoRA applied: {trainable_params:.1f}M trainable params ({trainable_pct:.2f}% of {total_params:.2f}B total)")
+            model.print_trainable_parameters()
     
     return model, tokenizer
 
@@ -550,6 +592,13 @@ def train(config: TrainingConfig):
             logging.info("\nTask Weights:")
             for task, weight in sorted(config.task_weights.items()):
                 logging.info(f"  {task:20s}: {weight:.2f}")
+        
+        if config.use_lora:
+            logging.info(f"\nLoRA Settings:")
+            logging.info(f"  Rank (r): {config.lora_r}")
+            logging.info(f"  Alpha: {config.lora_alpha}")
+            logging.info(f"  Dropout: {config.lora_dropout}")
+            logging.info(f"  Target modules: {len(config.lora_target_modules)} layers")
         
         logging.info("="*60)
         

@@ -57,6 +57,13 @@ use_double_quant: true  # Extra memory savings
 # Memory optimizations
 gradient_checkpointing: true  # Trade compute for memory (saves ~40% memory)
 
+# LoRA/PEFT settings (for efficient fine-tuning with quantization)
+use_lora: true
+lora_r: 16  # LoRA rank (8, 16, 32, 64) - higher = more params but better quality
+lora_alpha: 32  # LoRA scaling factor (typically 2x rank)
+lora_dropout: 0.05
+lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]  # All linear layers
+
 # Other
 seed: 42
 dataloader_num_workers: 4
