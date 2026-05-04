@@ -42,10 +42,10 @@ import wandb
 from datetime import datetime
 
 
-# Configure logging
+# Configure logging (simple format, rank added dynamically later)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - [Rank %(rank)s] - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 
@@ -212,12 +212,13 @@ def cleanup_ddp():
         dist.destroy_process_group()
 
 
-def load_model_and_tokenizer(config: TrainingConfig, device):
+def load_model_and_tokenizer(config: TrainingConfig, device, rank: int = 0):
     """Load Qwen model and tokenizer with optional quantization"""
-    logging.info(f"Loading model: {config.model_name}")
-    
-    if config.use_quantization:
-        logging.info(f"Using {config.quantization_bits}-bit quantization ({config.quantization_type})")
+    if rank == 0:
+        logging.info(f"Loading model: {config.model_name}")
+        
+        if config.use_quantization:
+            logging.info(f"Using {config.quantization_bits}-bit quantization ({config.quantization_type})")
     
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -258,10 +259,11 @@ def load_model_and_tokenizer(config: TrainingConfig, device):
     total_params = sum(p.numel() for p in model.parameters()) / 1e9
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e9
     
-    logging.info(f"Model loaded: {total_params:.2f}B total parameters, {trainable_params:.2f}B trainable")
-    
-    if config.use_quantization:
-        logging.info(f"Memory footprint reduced by ~{100 * (1 - config.quantization_bits/16):.0f}% with {config.quantization_bits}-bit quantization")
+    if rank == 0:
+        logging.info(f"Model loaded: {total_params:.2f}B total parameters, {trainable_params:.2f}B trainable")
+        
+        if config.use_quantization:
+            logging.info(f"Memory footprint reduced by ~{100 * (1 - config.quantization_bits/16):.0f}% with {config.quantization_bits}-bit quantization")
     
     return model, tokenizer
 
@@ -493,9 +495,6 @@ def train(config: TrainingConfig):
     # Setup DDP
     rank, local_rank, world_size, device = setup_ddp()
     
-    # Update logging format with rank
-    logging.LoggerAdapter(logging.getLogger(), {'rank': rank})
-    
     if rank == 0:
         logging.info("="*60)
         logging.info("Qwen Multi-Task Security Expert - DDP Fine-Tuning")
@@ -523,7 +522,7 @@ def train(config: TrainingConfig):
             )
     
     # Load model and tokenizer
-    model, tokenizer = load_model_and_tokenizer(config, device)
+    model, tokenizer = load_model_and_tokenizer(config, device, rank)
     
     # Wrap with DDP
     if world_size > 1:
