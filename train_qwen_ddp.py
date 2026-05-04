@@ -122,17 +122,25 @@ class MultiTaskSecurityDataset(Dataset):
         self,
         data_path: str,
         tokenizer,
-        max_length: int = 2048
+        max_length: int = 2048,
+        rank: int = 0
     ):
         self.tokenizer = tokenizer
         self.max_length = max_length
         
-        # Load data
+        if rank == 0:
+            logging.info(f"Loading dataset from {data_path}...")
+        
+        # Load data with progress tracking
         self.examples = []
         with open(data_path, 'r') as f:
-            for line in f:
+            for i, line in enumerate(f):
                 example = json.loads(line)
                 self.examples.append(example)
+                
+                # Progress update every 100k examples
+                if rank == 0 and (i + 1) % 100000 == 0:
+                    logging.info(f"  Loaded {i+1:,} examples...")
         
         # Count tasks
         task_counts = {}
@@ -140,11 +148,12 @@ class MultiTaskSecurityDataset(Dataset):
             task = ex.get('task_type', 'UNKNOWN')
             task_counts[task] = task_counts.get(task, 0) + 1
         
-        logging.info(f"Loaded {len(self.examples)} examples from {data_path}")
-        logging.info("Task distribution:")
-        for task, count in sorted(task_counts.items()):
-            pct = (count / len(self.examples)) * 100
-            logging.info(f"  {task}: {count:,} ({pct:.1f}%)")
+        if rank == 0:
+            logging.info(f"✓ Loaded {len(self.examples):,} examples from {data_path}")
+            logging.info("Task distribution:")
+            for task, count in sorted(task_counts.items()):
+                pct = (count / len(self.examples)) * 100
+                logging.info(f"  {task:20s}: {count:8,} ({pct:5.1f}%)")
     
     def __len__(self):
         return len(self.examples)
@@ -276,18 +285,26 @@ def create_dataloaders(
 ):
     """Create distributed dataloaders for multi-task training"""
     
+    if rank == 0:
+        logging.info("Creating datasets...")
+    
     # Create datasets
     train_dataset = MultiTaskSecurityDataset(
         data_path=config.train_data_path,
         tokenizer=tokenizer,
-        max_length=config.max_seq_length
+        max_length=config.max_seq_length,
+        rank=rank
     )
     
     val_dataset = MultiTaskSecurityDataset(
         data_path=config.val_data_path,
         tokenizer=tokenizer,
-        max_length=config.max_seq_length
+        max_length=config.max_seq_length,
+        rank=rank
     )
+    
+    if rank == 0:
+        logging.info("Creating distributed samplers...")
     
     # Create distributed samplers
     train_sampler = DistributedSampler(
@@ -304,6 +321,9 @@ def create_dataloaders(
         rank=rank,
         shuffle=False
     )
+    
+    if rank == 0:
+        logging.info("Creating dataloaders...")
     
     # Create dataloaders
     train_loader = DataLoader(
@@ -322,15 +342,22 @@ def create_dataloaders(
         pin_memory=True
     )
     
+    if rank == 0:
+        logging.info(f"✓ Dataloaders created (train: {len(train_loader):,} batches, val: {len(val_loader):,} batches)")
+    
     return train_loader, val_loader, train_sampler
 
 
 def create_optimizer_and_scheduler(
     model,
     config: TrainingConfig,
-    num_training_steps: int
+    num_training_steps: int,
+    rank: int = 0
 ):
     """Create optimizer and learning rate scheduler"""
+    
+    if rank == 0:
+        logging.info("Creating optimizer and scheduler...")
     
     # Separate parameters for weight decay
     no_decay = ['bias', 'LayerNorm.weight']
@@ -357,6 +384,10 @@ def create_optimizer_and_scheduler(
         num_warmup_steps=config.warmup_steps,
         num_training_steps=num_training_steps
     )
+    
+    if rank == 0:
+        logging.info(f"✓ Optimizer: AdamW (LR={config.learning_rate:.2e})")
+        logging.info(f"✓ Scheduler: Cosine with {config.warmup_steps} warmup steps")
     
     return optimizer, scheduler
 
@@ -524,9 +555,16 @@ def train(config: TrainingConfig):
     # Load model and tokenizer
     model, tokenizer = load_model_and_tokenizer(config, device, rank)
     
+    if rank == 0:
+        logging.info("✓ Model loaded successfully")
+    
     # Wrap with DDP
     if world_size > 1:
+        if rank == 0:
+            logging.info("Wrapping model with DDP...")
         model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+        if rank == 0:
+            logging.info("✓ DDP initialized")
     
     # Create dataloaders
     train_loader, val_loader, train_sampler = create_dataloaders(
@@ -538,19 +576,31 @@ def train(config: TrainingConfig):
     total_steps = steps_per_epoch * config.num_epochs
     
     if rank == 0:
-        logging.info(f"Training steps per epoch: {steps_per_epoch}")
-        logging.info(f"Total training steps: {total_steps}")
+        logging.info(f"\nTraining schedule:")
+        logging.info(f"  Steps per epoch: {steps_per_epoch:,}")
+        logging.info(f"  Total training steps: {total_steps:,}")
+        logging.info(f"  Estimated time: {total_steps * config.gradient_accumulation_steps / (200 * world_size):.1f} hours")
     
     # Create optimizer and scheduler
     optimizer, scheduler = create_optimizer_and_scheduler(
-        model, config, total_steps
+        model, config, total_steps, rank
     )
+    
+    if rank == 0:
+        logging.info("\n" + "="*60)
+        logging.info("Starting training...")
+        logging.info("="*60)
     
     # Training loop
     global_step = 0
     best_val_loss = float('inf')
     
     for epoch in range(config.num_epochs):
+        if rank == 0:
+            logging.info(f"\n{'='*60}")
+            logging.info(f"EPOCH {epoch+1}/{config.num_epochs}")
+            logging.info(f"{'='*60}")
+        
         # Set epoch for sampler (important for shuffling)
         train_sampler.set_epoch(epoch)
         
@@ -559,7 +609,7 @@ def train(config: TrainingConfig):
         optimizer.zero_grad()
         
         if rank == 0:
-            progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config.num_epochs}")
+            progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config.num_epochs}", ncols=100)
         else:
             progress_bar = train_loader
         
@@ -630,17 +680,20 @@ def train(config: TrainingConfig):
                         if task_counts[task] > 0:
                             task_avg_losses[task] = task_losses[task] / task_counts[task]
                     
+                    # Calculate progress percentage
+                    progress_pct = (global_step / total_steps) * 100
+                    
                     log_msg = (
-                        f"Step {global_step}/{total_steps} | "
+                        f"[{progress_pct:5.1f}%] Step {global_step:,}/{total_steps:,} | "
                         f"Loss: {avg_loss:.4f} | "
                         f"LR: {current_lr:.2e}"
                     )
                     
                     # Add per-task losses to log
                     if task_avg_losses:
-                        task_loss_str = " | ".join([f"{task}: {loss:.4f}" 
+                        task_loss_str = " | ".join([f"{task[:8]}: {loss:.3f}" 
                                                      for task, loss in sorted(task_avg_losses.items())])
-                        log_msg += f" | Task Losses: {task_loss_str}"
+                        log_msg += f" | {task_loss_str}"
                     
                     logging.info(log_msg)
                     
