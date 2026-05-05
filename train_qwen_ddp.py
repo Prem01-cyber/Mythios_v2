@@ -555,18 +555,20 @@ def evaluate(model, val_loader, device, rank, config: TrainingConfig = None):
                     task_losses[task] += loss.item()
                     task_counts[task] += 1
                     
-                    # CLASSIFY task: compute accuracy
+                    # CLASSIFY task: compute token-level accuracy
+                    # Note: This measures next-token prediction accuracy across the whole sequence
+                    # For true classification accuracy (0/1 prediction), use evaluate_multitask.py
                     if task == 'CLASSIFY':
-                        # Get predictions (argmax of logits)
-                        logits = outputs.logits
-                        predictions = torch.argmax(logits[:, -1, :], dim=-1)
-                        targets = labels[:, -1]
+                        logits = outputs.logits  # [batch, seq_len, vocab_size]
+                        predictions = torch.argmax(logits, dim=-1)  # [batch, seq_len]
                         
-                        # Only count non-padding tokens
-                        mask = targets != -100
-                        if mask.sum() > 0:
-                            classify_correct += (predictions[mask] == targets[mask]).sum().item()
-                            classify_total += mask.sum().item()
+                        # Compare predictions with labels for non-padded positions
+                        mask = labels != -100
+                        if mask.any():
+                            correct = (predictions[mask] == labels[mask]).sum().item()
+                            total = mask.sum().item()
+                            classify_correct += correct
+                            classify_total += total
             
             total_loss += loss.item()
             total_steps += 1
@@ -579,9 +581,10 @@ def evaluate(model, val_loader, device, rank, config: TrainingConfig = None):
         if task_counts[task] > 0:
             task_avg_losses[task] = task_losses[task] / task_counts[task]
     
-    # Add CLASSIFY accuracy if available
+    # Add CLASSIFY token accuracy if available
+    # Note: This is next-token prediction accuracy, not binary classification accuracy
     if classify_total > 0:
-        task_avg_losses['CLASSIFY_ACC'] = classify_correct / classify_total
+        task_avg_losses['CLASSIFY_TOKEN_ACC'] = classify_correct / classify_total
     
     # Average across all GPUs
     if dist.is_initialized():
@@ -589,11 +592,11 @@ def evaluate(model, val_loader, device, rank, config: TrainingConfig = None):
         dist.all_reduce(avg_loss_tensor, op=dist.ReduceOp.AVG)
         avg_loss = avg_loss_tensor.item()
         
-        # Sync classify metrics
+        # Sync classify token accuracy metrics
         if classify_total > 0:
             classify_tensors = torch.tensor([classify_correct, classify_total], dtype=torch.float32, device=device)
             dist.all_reduce(classify_tensors, op=dist.ReduceOp.SUM)
-            task_avg_losses['CLASSIFY_ACC'] = (classify_tensors[0] / classify_tensors[1]).item()
+            task_avg_losses['CLASSIFY_TOKEN_ACC'] = (classify_tensors[0] / classify_tensors[1]).item()
     
     return avg_loss, task_avg_losses
 
