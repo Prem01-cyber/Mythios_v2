@@ -516,7 +516,7 @@ def calculate_task_weighted_loss(
 
 
 def evaluate(model, val_loader, device, rank, config: TrainingConfig = None):
-    """Run evaluation with per-task metrics"""
+    """Run evaluation with per-task losses and metrics"""
     model.eval()
     total_loss = 0
     total_steps = 0
@@ -524,6 +524,10 @@ def evaluate(model, val_loader, device, rank, config: TrainingConfig = None):
     # Per-task metrics
     task_losses = {}
     task_counts = {}
+    
+    # Task-specific accuracy tracking
+    classify_correct = 0
+    classify_total = 0
     
     with torch.no_grad():
         for batch in val_loader:
@@ -550,6 +554,19 @@ def evaluate(model, val_loader, device, rank, config: TrainingConfig = None):
                         task_counts[task] = 0
                     task_losses[task] += loss.item()
                     task_counts[task] += 1
+                    
+                    # CLASSIFY task: compute accuracy
+                    if task == 'CLASSIFY':
+                        # Get predictions (argmax of logits)
+                        logits = outputs.logits
+                        predictions = torch.argmax(logits[:, -1, :], dim=-1)
+                        targets = labels[:, -1]
+                        
+                        # Only count non-padding tokens
+                        mask = targets != -100
+                        if mask.sum() > 0:
+                            classify_correct += (predictions[mask] == targets[mask]).sum().item()
+                            classify_total += mask.sum().item()
             
             total_loss += loss.item()
             total_steps += 1
@@ -562,11 +579,21 @@ def evaluate(model, val_loader, device, rank, config: TrainingConfig = None):
         if task_counts[task] > 0:
             task_avg_losses[task] = task_losses[task] / task_counts[task]
     
+    # Add CLASSIFY accuracy if available
+    if classify_total > 0:
+        task_avg_losses['CLASSIFY_ACC'] = classify_correct / classify_total
+    
     # Average across all GPUs
     if dist.is_initialized():
         avg_loss_tensor = torch.tensor(avg_loss, device=device)
         dist.all_reduce(avg_loss_tensor, op=dist.ReduceOp.AVG)
         avg_loss = avg_loss_tensor.item()
+        
+        # Sync classify metrics
+        if classify_total > 0:
+            classify_tensors = torch.tensor([classify_correct, classify_total], dtype=torch.float32, device=device)
+            dist.all_reduce(classify_tensors, op=dist.ReduceOp.SUM)
+            task_avg_losses['CLASSIFY_ACC'] = (classify_tensors[0] / classify_tensors[1]).item()
     
     return avg_loss, task_avg_losses
 
