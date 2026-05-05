@@ -8,8 +8,9 @@ echo "Qwen Multi-Task Security Expert"
 echo "DDP Training Launcher"
 echo "=========================================="
 
-# Default values
-NUM_GPUS=${NUM_GPUS:-4}
+# Default values (auto-detect GPUs if not specified)
+AVAILABLE_GPUS=$(nvidia-smi --list-gpus 2>/dev/null | wc -l || echo "0")
+NUM_GPUS=${NUM_GPUS:-$AVAILABLE_GPUS}
 CONFIG_FILE=${CONFIG_FILE:-"config/multitask_training_config.yaml"}
 MASTER_PORT=${MASTER_PORT:-29500}
 
@@ -42,15 +43,19 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# Check GPU availability
-AVAILABLE_GPUS=$(nvidia-smi --list-gpus | wc -l)
-echo "Available GPUs: $AVAILABLE_GPUS"
+# Validate GPU count
+if [ "$NUM_GPUS" -eq 0 ]; then
+    echo "Error: No GPUs detected. Please check nvidia-smi."
+    exit 1
+fi
 
 if [ "$NUM_GPUS" -gt "$AVAILABLE_GPUS" ]; then
     echo "Warning: Requested $NUM_GPUS GPUs but only $AVAILABLE_GPUS available"
     echo "Using $AVAILABLE_GPUS GPUs instead"
     NUM_GPUS=$AVAILABLE_GPUS
 fi
+
+echo "Detected GPUs: $AVAILABLE_GPUS"
 
 echo "Training Configuration:"
 echo "  - GPUs: $NUM_GPUS"

@@ -13,7 +13,7 @@ max_seq_length: 512  # Reduced to 512 for memory constraints (was 2048)
 num_epochs: 3
 per_device_train_batch_size: 1  # Reduced for memory constraints
 per_device_eval_batch_size: 2
-gradient_accumulation_steps: 8  # Effective batch = 1 * 4 GPUs * 8 = 32
+gradient_accumulation_steps: 4  # Effective batch = 1 * 8 GPUs * 4 = 32 (adjust if using fewer GPUs)
 learning_rate: 2.0e-5
 warmup_steps: 500
 max_grad_norm: 1.0
