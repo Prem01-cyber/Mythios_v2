@@ -122,6 +122,7 @@ class TrainingConfig:
     
     # Memory optimizations
     gradient_checkpointing: bool = False  # Trade compute for memory
+    use_flash_attention_2: bool = False  # Flash Attention 2 (2-4x speedup, requires Ampere+ GPUs)
     
     # LoRA/PEFT settings (for efficient fine-tuning)
     use_lora: bool = False
@@ -285,14 +286,27 @@ def load_model_and_tokenizer(config: TrainingConfig, device, rank: int = 0):
             bnb_4bit_use_double_quant=config.use_double_quant,  # Double quantization
         )
     
+    # Prepare model loading kwargs
+    model_kwargs = {
+        "trust_remote_code": True,
+        "quantization_config": quantization_config,
+        "torch_dtype": torch.float16 if config.fp16 else torch.float32,
+        "device_map": None if not config.use_quantization else {"": device}
+    }
+    
+    # Enable Flash Attention 2 if requested (2-4x faster attention)
+    if config.use_flash_attention_2:
+        try:
+            model_kwargs["attn_implementation"] = "flash_attention_2"
+            if rank == 0:
+                logging.info("✓ Flash Attention 2 enabled (2-4x faster attention computation)")
+        except Exception as e:
+            if rank == 0:
+                logging.warning(f"Flash Attention 2 not available: {e}")
+                logging.warning("Falling back to default attention (install with: pip install flash-attn)")
+    
     # Load model
-    model = AutoModelForCausalLM.from_pretrained(
-        config.model_name,
-        trust_remote_code=True,
-        quantization_config=quantization_config,
-        torch_dtype=torch.float16 if config.fp16 else torch.float32,
-        device_map=None if not config.use_quantization else {"": device}  # Quantized models need device_map
-    )
+    model = AutoModelForCausalLM.from_pretrained(config.model_name, **model_kwargs)
     
     # Only move to device if not using quantization (quantization handles device placement)
     if not config.use_quantization:

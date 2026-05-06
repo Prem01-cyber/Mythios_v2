@@ -43,6 +43,7 @@ numpy>=1.24.0              # Numerical operations
 # Model optimization (optional but recommended)
 bitsandbytes>=0.41.0       # 8-bit optimizers
 peft>=0.7.0                # Parameter-efficient fine-tuning
+flash-attn>=2.3.0          # Flash Attention 2 (2-4x faster, requires Ampere+ GPUs)
 
 # Evaluation and metrics
 scikit-learn>=1.3.0        # ML metrics
