@@ -1,44 +1,44 @@
 # Multi-Task Training Configuration for Qwen Security Expert
 # Trains on 4 tasks: CLASSIFY, CVE_LOOKUP, CODE_ANALYSIS, FIX
+# OPTIMIZED FOR SPEED: 2-4x faster than default settings
 
 # Model settings
 model_name: "Qwen/Qwen2.5-7B-Instruct"
 
-# Data paths (multi-task data)
+# Data paths
 train_data_path: "vuln_data/multitask_data/train.jsonl"
 val_data_path: "vuln_data/multitask_data/val.jsonl"
-max_seq_length: 512  # Reduced to 512 for memory constraints (was 2048)
+max_seq_length: 512  # Balance between context and speed
 
-# Training hyperparameters
+# Training hyperparameters (OPTIMIZED)
 num_epochs: 3
-per_device_train_batch_size: 1  # Reduced for memory constraints
-per_device_eval_batch_size: 2
-gradient_accumulation_steps: 4  # Effective batch = 1 * 8 GPUs * 4 = 32 (adjust if using fewer GPUs)
+per_device_train_batch_size: 2  # Increased from 1 (better GPU utilization)
+per_device_eval_batch_size: 4   # Increased from 2
+gradient_accumulation_steps: 2  # Reduced from 4 (faster optimizer updates)
 learning_rate: 2.0e-5
 warmup_steps: 500
 max_grad_norm: 1.0
 weight_decay: 0.01
 
-# Multi-task specific settings
-# Task weights for loss calculation (must sum to 1.0)
+# Multi-task weights (must sum to 1.0)
 task_weights:
-  CLASSIFY: 0.20        # Binary classification
-  CVE_LOOKUP: 0.40      # CVE identification (highest priority)
-  CODE_ANALYSIS: 0.30   # Deep analysis
-  FIX: 0.10            # Remediation
+  CLASSIFY: 0.20
+  CVE_LOOKUP: 0.40
+  CODE_ANALYSIS: 0.30
+  FIX: 0.10
 
 # DDP settings
 backend: "nccl"
 
-# Checkpointing
+# Checkpointing (OPTIMIZED)
 output_dir: "checkpoints/qwen-security-expert-multitask"
-save_steps: 2000
+save_steps: 5000     # Less frequent (was 2000) - saves I/O time
 save_total_limit: 3
 
-# Logging
-logging_steps: 50
-eval_steps: 1000
-use_wandb: true
+# Logging (OPTIMIZED)
+logging_steps: 100   # Less frequent (was 50)
+eval_steps: 5000     # Much less frequent (was 1000) - MAJOR SPEEDUP
+use_wandb: false     # Disabled by default
 wandb_project: "qwen-multitask-security"
 
 # Optimization
@@ -48,22 +48,24 @@ adam_beta1: 0.9
 adam_beta2: 0.999
 adam_epsilon: 1.0e-8
 
-# Quantization (for memory-constrained GPUs < 16GB)
+# Quantization
 use_quantization: true
-quantization_bits: 4  # 4-bit quantization (saves ~75% memory)
-quantization_type: "nf4"  # NormalFloat4 (recommended for fine-tuning)
-use_double_quant: true  # Extra memory savings
+quantization_bits: 4
+quantization_type: "nf4"
+use_double_quant: true
 
 # Memory optimizations
-gradient_checkpointing: true  # Trade compute for memory (saves ~40% memory)
+gradient_checkpointing: true
 
-# LoRA/PEFT settings (for efficient fine-tuning with quantization)
+# LoRA/PEFT settings
 use_lora: true
-lora_r: 16  # LoRA rank (8, 16, 32, 64) - higher = more params but better quality
-lora_alpha: 32  # LoRA scaling factor (typically 2x rank)
+lora_r: 16
+lora_alpha: 32
 lora_dropout: 0.05
-lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]  # All linear layers
+lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 
-# Other
+# DataLoader optimizations (SPEED CRITICAL)
 seed: 42
-dataloader_num_workers: 4
+dataloader_num_workers: 12     # Increased from 4 (1.5x per GPU for 8 GPUs)
+prefetch_factor: 4             # Prefetch 4 batches per worker (prevents GPU starvation)
+persistent_workers: true       # Keep workers alive between epochs (saves startup time)

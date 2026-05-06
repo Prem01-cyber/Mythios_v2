@@ -43,6 +43,24 @@ import wandb
 from datetime import datetime
 
 
+# ============================================
+# SPEED OPTIMIZATIONS
+# ============================================
+
+# Set CUDA matmul precision for faster training (slight accuracy trade-off acceptable)
+torch.set_float32_matmul_precision('medium')
+
+# Enable TF32 on Ampere GPUs (RTX 3090, A100, etc.) for 3-8x faster matmul
+if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8:
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+
+# Disable CUDA launch blocking for async ops (faster kernel launches)
+os.environ['CUDA_LAUNCH_BLOCKING'] = '0'
+
+# Enable cudnn benchmark mode (finds fastest algorithms, 5-10% speedup)
+torch.backends.cudnn.benchmark = True
+
 # Configure logging (simple format, rank added dynamically later)
 logging.basicConfig(
     level=logging.INFO,
@@ -497,12 +515,27 @@ def create_optimizer_and_scheduler(
         }
     ]
     
-    optimizer = torch.optim.AdamW(
-        optimizer_grouped_parameters,
-        lr=config.learning_rate,
-        betas=(config.adam_beta1, config.adam_beta2),
-        eps=config.adam_epsilon
-    )
+    # Use fused AdamW for 10-20% speedup if available (requires PyTorch 2.0+)
+    try:
+        optimizer = torch.optim.AdamW(
+            optimizer_grouped_parameters,
+            lr=config.learning_rate,
+            betas=(config.adam_beta1, config.adam_beta2),
+            eps=config.adam_epsilon,
+            fused=True  # Fused CUDA kernel (10-20% faster)
+        )
+        if rank == 0:
+            logging.info("✓ Using fused AdamW optimizer (faster)")
+    except:
+        # Fallback to regular AdamW if fused not available
+        optimizer = torch.optim.AdamW(
+            optimizer_grouped_parameters,
+            lr=config.learning_rate,
+            betas=(config.adam_beta1, config.adam_beta2),
+            eps=config.adam_epsilon
+        )
+        if rank == 0:
+            logging.info("✓ Using standard AdamW optimizer")
     
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
