@@ -124,6 +124,8 @@ class TrainingConfig:
     # Other
     seed: int = 42
     dataloader_num_workers: int = 4
+    prefetch_factor: int = 2  # Number of batches to prefetch per worker
+    persistent_workers: bool = False  # Keep workers alive between epochs
 
 
 class MultiTaskSecurityDataset(Dataset):
@@ -183,22 +185,22 @@ class MultiTaskSecurityDataset(Dataset):
             content = message['content']
             formatted_text += f"<|im_start|>{role}\n{content}<|im_end|>\n"
         
-        # Tokenize
+        # Tokenize WITHOUT padding (dynamic padding in DataCollator)
+        # This is MUCH faster - only process actual tokens, not padding
         encoding = self.tokenizer(
             formatted_text,
             truncation=True,
             max_length=self.max_length,
-            padding='max_length',
+            padding=False,  # CHANGED: Dynamic padding instead of max_length (2-3x speedup)
             return_tensors='pt'
         )
         
         # For language modeling, labels = input_ids
-        # but mask padding tokens (-100 tells PyTorch to ignore them in loss)
         input_ids = encoding['input_ids'].squeeze()
         attention_mask = encoding['attention_mask'].squeeze()
         
+        # Labels will be padded with -100 in DataCollator
         labels = input_ids.clone()
-        labels[attention_mask == 0] = -100
         
         # Get task type for loss weighting
         task_type = example.get('task_type', 'UNKNOWN')
@@ -328,6 +330,69 @@ def load_model_and_tokenizer(config: TrainingConfig, device, rank: int = 0):
     return model, tokenizer
 
 
+class DataCollatorWithDynamicPadding:
+    """
+    Dynamic padding collator for multi-task training
+    
+    Only pads to the longest sequence in the batch (not max_length)
+    This dramatically reduces computation on padding tokens (2-3x speedup)
+    """
+    
+    def __init__(self, tokenizer, pad_to_multiple_of=8):
+        self.tokenizer = tokenizer
+        self.pad_to_multiple_of = pad_to_multiple_of  # For tensor core efficiency
+    
+    def __call__(self, batch):
+        # Extract task types
+        task_types = [item['task_type'] for item in batch]
+        
+        # Find max length in this batch
+        max_len = max(len(item['input_ids']) for item in batch)
+        
+        # Round up to multiple of 8 for tensor core efficiency
+        if self.pad_to_multiple_of:
+            max_len = ((max_len + self.pad_to_multiple_of - 1) 
+                      // self.pad_to_multiple_of * self.pad_to_multiple_of)
+        
+        # Pad sequences
+        input_ids = []
+        attention_mask = []
+        labels = []
+        
+        for item in batch:
+            seq_len = len(item['input_ids'])
+            pad_len = max_len - seq_len
+            
+            # Pad input_ids and attention_mask
+            input_ids.append(
+                torch.cat([
+                    item['input_ids'],
+                    torch.full((pad_len,), self.tokenizer.pad_token_id, dtype=torch.long)
+                ])
+            )
+            attention_mask.append(
+                torch.cat([
+                    item['attention_mask'],
+                    torch.zeros(pad_len, dtype=torch.long)
+                ])
+            )
+            
+            # Pad labels with -100 (ignored in loss)
+            labels.append(
+                torch.cat([
+                    item['labels'],
+                    torch.full((pad_len,), -100, dtype=torch.long)
+                ])
+            )
+        
+        return {
+            'input_ids': torch.stack(input_ids),
+            'attention_mask': torch.stack(attention_mask),
+            'labels': torch.stack(labels),
+            'task_type': task_types
+        }
+
+
 def create_dataloaders(
     config: TrainingConfig,
     tokenizer,
@@ -374,7 +439,10 @@ def create_dataloaders(
     )
     
     if rank == 0:
-        logging.info("Creating dataloaders...")
+        logging.info("Creating dataloaders with dynamic padding...")
+    
+    # Create dynamic padding collator (MAJOR SPEEDUP)
+    collator = DataCollatorWithDynamicPadding(tokenizer)
     
     # Create dataloaders
     train_loader = DataLoader(
@@ -382,7 +450,10 @@ def create_dataloaders(
         batch_size=config.per_device_train_batch_size,
         sampler=train_sampler,
         num_workers=config.dataloader_num_workers,
-        pin_memory=True
+        pin_memory=True,
+        collate_fn=collator,  # ADDED: Dynamic padding
+        prefetch_factor=getattr(config, 'prefetch_factor', 2),  # ADDED: Prefetch batches
+        persistent_workers=getattr(config, 'persistent_workers', False)  # ADDED: Keep workers alive
     )
     
     val_loader = DataLoader(
@@ -390,7 +461,10 @@ def create_dataloaders(
         batch_size=config.per_device_eval_batch_size,
         sampler=val_sampler,
         num_workers=config.dataloader_num_workers,
-        pin_memory=True
+        pin_memory=True,
+        collate_fn=collator,  # ADDED: Dynamic padding
+        prefetch_factor=getattr(config, 'prefetch_factor', 2),
+        persistent_workers=getattr(config, 'persistent_workers', False)
     )
     
     if rank == 0:

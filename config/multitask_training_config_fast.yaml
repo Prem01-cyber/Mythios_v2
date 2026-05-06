@@ -1,0 +1,75 @@
+# Multi-Task Training Configuration - SPEED OPTIMIZED
+# Optimizations:
+# - Dynamic padding (2-3x faster)
+# - More dataloader workers
+# - Less frequent eval
+# - Reduced gradient accumulation
+
+# Model settings
+model_name: "Qwen/Qwen2.5-7B-Instruct"
+
+# Data paths
+train_data_path: "vuln_data/multitask_data/train.jsonl"
+val_data_path: "vuln_data/multitask_data/val.jsonl"
+max_seq_length: 512
+
+# Training hyperparameters (OPTIMIZED)
+num_epochs: 3
+per_device_train_batch_size: 2  # Increased from 1 (you have memory headroom)
+per_device_eval_batch_size: 4   # Increased from 2
+gradient_accumulation_steps: 2  # Reduced from 4 (faster optimizer steps)
+learning_rate: 2.0e-5
+warmup_steps: 500
+max_grad_norm: 1.0
+weight_decay: 0.01
+
+# Multi-task specific settings
+task_weights:
+  CLASSIFY: 0.20
+  CVE_LOOKUP: 0.40
+  CODE_ANALYSIS: 0.30
+  FIX: 0.10
+
+# DDP settings
+backend: "nccl"
+
+# Checkpointing
+output_dir: "checkpoints/qwen-security-expert-multitask"
+save_steps: 5000  # Less frequent (was 2000)
+save_total_limit: 3
+
+# Logging (OPTIMIZED)
+logging_steps: 100  # Less frequent (was 50)
+eval_steps: 5000    # Much less frequent (was 1000) - BIG SPEEDUP
+use_wandb: false
+wandb_project: "qwen-multitask-security"
+
+# Optimization
+fp16: true
+optim: "adamw_torch"
+adam_beta1: 0.9
+adam_beta2: 0.999
+adam_epsilon: 1.0e-8
+
+# Quantization
+use_quantization: true
+quantization_bits: 4
+quantization_type: "nf4"
+use_double_quant: true
+
+# Memory optimizations
+gradient_checkpointing: true  # Keep for memory safety
+
+# LoRA/PEFT settings
+use_lora: true
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+# Other (OPTIMIZED)
+seed: 42
+dataloader_num_workers: 12  # Increased from 4 (2x8 GPUs = 16 ideal, use 12 for safety)
+prefetch_factor: 4          # NEW: Prefetch 4 batches per worker
+pin_memory: true            # NEW: Faster GPU transfer
+persistent_workers: true    # NEW: Don't restart workers each epoch
