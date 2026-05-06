@@ -1,0 +1,73 @@
+# Multi-Task Training Configuration - DeepSpeed ZeRO-3 (Model Parallelism)
+# FULL PRECISION MODEL split across GPUs (no quantization)
+# Better quality than quantized DDP approach
+
+# Model settings
+model_name: "Qwen/Qwen2.5-7B-Instruct"
+
+# Data paths
+train_data_path: "vuln_data/multitask_data/train.jsonl"
+val_data_path: "vuln_data/multitask_data/val.jsonl"
+max_seq_length: 512
+
+# Training hyperparameters
+num_epochs: 3
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 2
+gradient_accumulation_steps: 4
+learning_rate: 2.0e-5
+warmup_steps: 500
+max_grad_norm: 1.0
+weight_decay: 0.01
+
+# Multi-task weights
+task_weights:
+  CLASSIFY: 0.20
+  CVE_LOOKUP: 0.40
+  CODE_ANALYSIS: 0.30
+  FIX: 0.10
+
+# DeepSpeed settings
+use_deepspeed: true
+deepspeed_config: "config/deepspeed_zero3_config.json"
+
+# Checkpointing
+output_dir: "checkpoints/qwen-security-expert-multitask-zero3"
+save_steps: 5000
+save_total_limit: 3
+
+# Logging
+logging_steps: 100
+eval_steps: 5000
+use_wandb: false
+wandb_project: "qwen-multitask-security-zero3"
+
+# Optimization (NO QUANTIZATION - full precision)
+fp16: true
+optim: "adamw_torch"
+adam_beta1: 0.9
+adam_beta2: 0.999
+adam_epsilon: 1.0e-8
+
+# Quantization (DISABLED for full precision)
+use_quantization: false
+quantization_bits: 16  # Full precision
+quantization_type: "fp16"
+use_double_quant: false
+
+# Memory optimizations
+gradient_checkpointing: true
+use_flash_attention_2: true
+
+# LoRA settings (OPTIONAL - can disable for full fine-tuning)
+use_lora: true  # Still use LoRA for efficiency, but with full precision
+lora_r: 32      # Higher rank than quantized version (better quality)
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+# DataLoader optimizations
+seed: 42
+dataloader_num_workers: 12
+prefetch_factor: 4
+persistent_workers: true
