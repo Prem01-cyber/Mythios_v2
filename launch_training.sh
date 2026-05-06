@@ -11,7 +11,7 @@ echo "=========================================="
 # Default values (auto-detect GPUs if not specified)
 AVAILABLE_GPUS=$(nvidia-smi --list-gpus 2>/dev/null | wc -l || echo "0")
 NUM_GPUS=${NUM_GPUS:-$AVAILABLE_GPUS}
-CONFIG_FILE=${CONFIG_FILE:-"config/multitask_training_config.yaml"}
+CONFIG_FILE=${CONFIG_FILE:-"config/multitask_training_config_fast.yaml"}  # OPTIMIZED: 2-4x faster
 MASTER_PORT=${MASTER_PORT:-29500}
 
 # Parse command line arguments
