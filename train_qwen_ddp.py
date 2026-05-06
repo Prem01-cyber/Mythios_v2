@@ -829,7 +829,7 @@ def train(config: TrainingConfig):
         
         model.train()
         epoch_loss = 0
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
         
         if rank == 0:
             progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config.num_epochs}", ncols=100)
@@ -841,10 +841,10 @@ def train(config: TrainingConfig):
         task_counts = {}
         
         for step, batch in enumerate(progress_bar):
-            # Move to device
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
-            labels = batch['labels'].to(device)
+            # Move to device (non_blocking=True for async transfer, ~5-10% speedup)
+            input_ids = batch['input_ids'].to(device, non_blocking=True)
+            attention_mask = batch['attention_mask'].to(device, non_blocking=True)
+            labels = batch['labels'].to(device, non_blocking=True)
             task_types = batch.get('task_type', [])
             
             # Forward pass
@@ -888,7 +888,7 @@ def train(config: TrainingConfig):
                 # Optimizer step
                 optimizer.step()
                 scheduler.step()
-                optimizer.zero_grad()
+                optimizer.zero_grad(set_to_none=True)  # Faster than default (sets to None instead of 0)
                 
                 global_step += 1
                 

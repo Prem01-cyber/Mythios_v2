@@ -12,9 +12,9 @@ max_seq_length: 512  # Balance between context and speed
 
 # Training hyperparameters (OPTIMIZED)
 num_epochs: 3
-per_device_train_batch_size: 2  # Increased from 1 (better GPU utilization)
-per_device_eval_batch_size: 4   # Increased from 2
-gradient_accumulation_steps: 2  # Reduced from 4 (faster optimizer updates)
+per_device_train_batch_size: 1  # Keep at 1 (memory/speed sweet spot with quantization)
+per_device_eval_batch_size: 2
+gradient_accumulation_steps: 4  # Effective batch = 1 * 8 GPUs * 4 = 32
 learning_rate: 2.0e-5
 warmup_steps: 500
 max_grad_norm: 1.0
@@ -36,8 +36,8 @@ save_steps: 5000     # Less frequent (was 2000) - saves I/O time
 save_total_limit: 3
 
 # Logging (OPTIMIZED)
-logging_steps: 100   # Less frequent (was 50)
-eval_steps: 5000     # Much less frequent (was 1000) - MAJOR SPEEDUP
+logging_steps: 200   # Less frequent (was 50) - reduces overhead
+eval_steps: 10000    # Very infrequent (was 1000) - MAJOR SPEEDUP
 use_wandb: false     # Disabled by default
 wandb_project: "qwen-multitask-security"
 
