@@ -12,7 +12,7 @@ Key differences from DDP approach:
 - Uses DeepSpeed ZeRO-3 for efficient model sharding
 
 Usage:
-    deepspeed --num_gpus=8 train_qwen_zero3.py --config config/multitask_training_config_zero3.yaml
+    deepspeed --num_gpus=4 train_qwen_zero3.py --config config/multitask_training_config_zero3.yaml
 """
 
 import os
